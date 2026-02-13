@@ -12,10 +12,6 @@ const PlaceholderPage = ({ title }: { title: string }) => (
   </div>
 );
 
-export const Inventory = () => <PlaceholderPage title="Inventory" />;
-export const Lending = () => <PlaceholderPage title="Lending" />;
-export const Members = () => <PlaceholderPage title="Members" />;
-export const Donations = () => <PlaceholderPage title="Donations" />;
 export const Fines = () => <PlaceholderPage title="Fines" />;
 export const Reports = () => <PlaceholderPage title="Reports" />;
 export const SettingsPage = () => <PlaceholderPage title="Settings" />;
