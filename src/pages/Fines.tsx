@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+import { PageHeader } from "@/components/PageHeader";
+import { SearchBar } from "@/components/SearchBar";
+import { FilterChips } from "@/components/FilterChips";
+import { DataTable, type Column } from "@/components/DataTable";
+import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
 
 interface Fine {
   id: string;
@@ -15,6 +16,12 @@ interface Fine {
   status: "unpaid" | "paid" | "waived";
 }
 
+const STATUS_VARIANT: Record<Fine["status"], BadgeVariant> = {
+  unpaid: "destructive",
+  paid: "success",
+  waived: "muted",
+};
+
 const INITIAL_FINES: Fine[] = [
   { id: "F-001", member: "Jane Muthoni", memberId: "M-1001", book: "The River Between", daysLate: 12, amount: 240, status: "unpaid" },
   { id: "F-002", member: "Peter Kamau", memberId: "M-1004", book: "Weep Not, Child", daysLate: 5, amount: 100, status: "unpaid" },
@@ -24,17 +31,22 @@ const INITIAL_FINES: Fine[] = [
   { id: "F-006", member: "Samuel Njoroge", memberId: "M-1006", book: "Things Fall Apart", daysLate: 1, amount: 20, status: "paid" },
 ];
 
-const statusConfig: Record<Fine["status"], { label: string; variant: "default" | "secondary" | "outline" }> = {
-  unpaid: { label: "Unpaid", variant: "default" },
-  paid: { label: "Paid", variant: "secondary" },
-  waived: { label: "Waived", variant: "outline" },
-};
+const FILTER_OPTIONS = ["all", "unpaid", "paid", "waived"] as const;
 
 export default function FinesPage() {
   const [fines, setFines] = useState<Fine[]>(INITIAL_FINES);
-  const [filter, setFilter] = useState<"all" | Fine["status"]>("all");
+  const [filter, setFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
 
-  const filtered = filter === "all" ? fines : fines.filter((f) => f.status === filter);
+  const filtered = fines.filter((f) => {
+    const matchesFilter = filter === "all" || f.status === filter;
+    const matchesSearch =
+      !search ||
+      f.member.toLowerCase().includes(search.toLowerCase()) ||
+      f.book.toLowerCase().includes(search.toLowerCase()) ||
+      f.id.toLowerCase().includes(search.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
 
   const totalUnpaid = fines
     .filter((f) => f.status === "unpaid")
@@ -46,84 +58,87 @@ export default function FinesPage() {
     );
   };
 
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">Fines</h1>
-          <p className="text-[13px] text-muted-foreground">
-            Outstanding: <span className="font-medium text-foreground">KES {totalUnpaid.toLocaleString()}</span>
-          </p>
-        </div>
-      </div>
+  const hasFilters = search || filter !== "all";
 
-      {/* Filters */}
-      <div className="flex gap-2">
-        {(["all", "unpaid", "paid", "waived"] as const).map((s) => (
-          <Button
-            key={s}
-            size="sm"
-            variant={filter === s ? "default" : "outline"}
-            onClick={() => setFilter(s)}
-            className="capitalize text-xs h-8"
-          >
-            {s}
+  const columns: Column<Fine>[] = [
+    {
+      key: "member",
+      label: "Member",
+      render: (f) => (
+        <>
+          <span className="font-medium text-foreground">{f.member}</span>
+          <span className="text-muted-foreground ml-1.5 text-[11px]">{f.memberId}</span>
+        </>
+      ),
+    },
+    { key: "book", label: "Book", render: (f) => f.book },
+    { key: "daysLate", label: "Days Late", headerClassName: "text-right", className: "text-right", render: (f) => f.daysLate },
+    {
+      key: "amount",
+      label: "Amount (KES)",
+      headerClassName: "text-right",
+      className: "text-right font-medium",
+      render: (f) => f.amount.toLocaleString(),
+    },
+    {
+      key: "status",
+      label: "Status",
+      render: (f) => (
+        <StatusBadge variant={STATUS_VARIANT[f.status]}>
+          {f.status.charAt(0).toUpperCase() + f.status.slice(1)}
+        </StatusBadge>
+      ),
+    },
+    {
+      key: "actions",
+      label: "",
+      headerClassName: "text-right",
+      className: "text-right",
+      render: (f) =>
+        f.status === "unpaid" ? (
+          <Button size="sm" variant="outline" className="h-6 text-[12px] px-2" onClick={() => markPaid(f.id)}>
+            Mark Paid
           </Button>
-        ))}
+        ) : null,
+    },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <PageHeader
+        title="Fines"
+        subtitle={`Outstanding: KES ${totalUnpaid.toLocaleString()}`}
+      />
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Search fines..."
+          className="flex-1 min-w-[200px] max-w-xs"
+        />
+        <FilterChips
+          options={[...FILTER_OPTIONS]}
+          value={filter as typeof FILTER_OPTIONS[number]}
+          onChange={setFilter}
+        />
+        {hasFilters && (
+          <button
+            onClick={() => { setSearch(""); setFilter("all"); }}
+            className="text-[12px] text-muted-foreground hover:text-foreground underline"
+          >
+            Reset
+          </button>
+        )}
       </div>
 
-      {/* Table */}
-      <div className="bg-card border border-border rounded">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Member</TableHead>
-              <TableHead>Book</TableHead>
-              <TableHead className="text-right">Days Late</TableHead>
-              <TableHead className="text-right">Amount (KES)</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((fine) => {
-              const cfg = statusConfig[fine.status];
-              return (
-                <TableRow key={fine.id}>
-                  <TableCell>
-                    <div className="font-medium text-[13px]">{fine.member}</div>
-                    <div className="text-xs text-muted-foreground">{fine.memberId}</div>
-                  </TableCell>
-                  <TableCell className="text-[13px]">{fine.book}</TableCell>
-                  <TableCell className="text-right text-[13px]">{fine.daysLate}</TableCell>
-                  <TableCell className="text-right font-medium text-[13px]">
-                    {fine.amount.toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={cfg.variant} className="text-[11px]">
-                      {cfg.label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {fine.status === "unpaid" && (
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => markPaid(fine.id)}>
-                        Mark Paid
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-            {filtered.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground text-sm py-8">
-                  No fines found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        columns={columns}
+        data={filtered}
+        keyExtractor={(f) => f.id}
+        emptyMessage="No fines found."
+        compact
+      />
     </div>
   );
 }

@@ -1,7 +1,12 @@
 import { useState } from "react";
-import { Search, CalendarDays, CheckCircle2, RotateCcw } from "lucide-react";
+import { Search, CalendarDays, CheckCircle2, RotateCcw, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/PageHeader";
+import { SearchBar } from "@/components/SearchBar";
+import { DataTable, type Column } from "@/components/DataTable";
+import { StatusBadge } from "@/components/StatusBadge";
+import { BookDetailDrawer } from "@/components/BookDetailDrawer";
 
 interface ActiveLoan {
   id: string;
@@ -28,22 +33,82 @@ export default function Lending() {
   const [bookSearch, setBookSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [selectedBook, setSelectedBook] = useState<string | null>(null);
+  const [loanSearch, setLoanSearch] = useState("");
+  const [drawerBook, setDrawerBook] = useState<{ accessionId: string; title: string; author: string; category: string; status: string; location: string } | null>(null);
 
   const canIssue = selectedMember && selectedBook;
 
+  const filteredLoans = ACTIVE_LOANS.filter(
+    (l) =>
+      !loanSearch ||
+      l.member.toLowerCase().includes(loanSearch.toLowerCase()) ||
+      l.book.toLowerCase().includes(loanSearch.toLowerCase()) ||
+      l.id.toLowerCase().includes(loanSearch.toLowerCase())
+  );
+
+  const columns: Column<ActiveLoan>[] = [
+    {
+      key: "thumb",
+      label: "",
+      className: "w-10",
+      render: () => (
+        <div className="h-8 w-8 rounded bg-secondary flex items-center justify-center">
+          <BookOpen className="h-3.5 w-3.5 text-muted-foreground/50" />
+        </div>
+      ),
+    },
+    { key: "id", label: "Loan ID", className: "text-muted-foreground font-mono text-[12px]", render: (l) => l.id },
+    {
+      key: "member",
+      label: "Member",
+      render: (l) => (
+        <>
+          <span className="font-medium text-foreground">{l.member}</span>
+          <span className="text-muted-foreground ml-1.5 text-[11px]">{l.memberId}</span>
+        </>
+      ),
+    },
+    {
+      key: "book",
+      label: "Book",
+      render: (l) => (
+        <>
+          <span className="text-foreground">{l.book}</span>
+          <span className="text-muted-foreground ml-1.5 text-[11px]">{l.accessionId}</span>
+        </>
+      ),
+    },
+    { key: "issued", label: "Issued", className: "text-muted-foreground", render: (l) => l.issuedDate },
+    { key: "due", label: "Due Date", className: "text-muted-foreground", render: (l) => l.dueDate },
+    {
+      key: "status",
+      label: "Status",
+      render: (l) => (
+        <StatusBadge variant={l.status === "Overdue" ? "destructive" : "success"}>
+          {l.status}
+        </StatusBadge>
+      ),
+    },
+    {
+      key: "action",
+      label: "Action",
+      render: () => (
+        <Button size="sm" variant="outline" className="h-6 gap-1 text-[12px] px-2">
+          <RotateCcw className="h-3 w-3" /> Return
+        </Button>
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-lg font-semibold text-foreground">Lending</h1>
-        <p className="text-[13px] text-muted-foreground">Issue and return books</p>
-      </div>
+    <div className="space-y-3">
+      <PageHeader title="Lending" subtitle="Issue and return books" />
 
       {/* Issue Workflow */}
-      <div className="bg-card border border-border rounded p-4">
-        <h2 className="text-[13px] font-semibold text-foreground mb-3">Issue Book</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          {/* Member Search */}
-          <div className="space-y-1.5">
+      <div className="bg-card border border-border rounded p-3">
+        <h2 className="text-[13px] font-semibold text-foreground mb-2">Issue Book</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+          <div className="space-y-1">
             <label className="text-[12px] font-medium text-muted-foreground">Member</label>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -63,9 +128,7 @@ export default function Lending() {
               </p>
             )}
           </div>
-
-          {/* Book Search */}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <label className="text-[12px] font-medium text-muted-foreground">Book</label>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -85,22 +148,14 @@ export default function Lending() {
               </p>
             )}
           </div>
-
-          {/* Due Date */}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <label className="text-[12px] font-medium text-muted-foreground">Due Date</label>
             <div className="relative">
               <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                type="date"
-                defaultValue="2026-02-27"
-                className="pl-8 h-8 text-[13px]"
-              />
+              <Input type="date" defaultValue="2026-02-27" className="pl-8 h-8 text-[13px]" />
             </div>
           </div>
-
-          {/* Confirm */}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <label className="text-[12px] font-medium text-muted-foreground">&nbsp;</label>
             <Button size="sm" className="w-full h-8 text-[13px]" disabled={!canIssue}>
               Confirm Issue
@@ -109,60 +164,41 @@ export default function Lending() {
         </div>
       </div>
 
-      {/* Active Loans Table */}
-      <div className="bg-card border border-border rounded">
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <h2 className="text-[13px] font-semibold text-foreground">
-            Active Loans <span className="text-muted-foreground font-normal">({ACTIVE_LOANS.length})</span>
-          </h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-b border-border bg-secondary/50">
-                <th className="text-left font-medium text-muted-foreground px-4 py-2.5">Loan ID</th>
-                <th className="text-left font-medium text-muted-foreground px-4 py-2.5">Member</th>
-                <th className="text-left font-medium text-muted-foreground px-4 py-2.5">Book</th>
-                <th className="text-left font-medium text-muted-foreground px-4 py-2.5">Issued</th>
-                <th className="text-left font-medium text-muted-foreground px-4 py-2.5">Due Date</th>
-                <th className="text-left font-medium text-muted-foreground px-4 py-2.5">Status</th>
-                <th className="text-left font-medium text-muted-foreground px-4 py-2.5">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ACTIVE_LOANS.map((loan) => (
-                <tr key={loan.id} className="border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors">
-                  <td className="px-4 py-2.5 text-muted-foreground font-mono text-[12px]">{loan.id}</td>
-                  <td className="px-4 py-2.5">
-                    <span className="font-medium text-foreground">{loan.member}</span>
-                    <span className="text-muted-foreground ml-1.5 text-[11px]">{loan.memberId}</span>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <span className="text-foreground">{loan.book}</span>
-                    <span className="text-muted-foreground ml-1.5 text-[11px]">{loan.accessionId}</span>
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{loan.issuedDate}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{loan.dueDate}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${
-                      loan.status === "Overdue"
-                        ? "bg-destructive/10 text-destructive border-destructive/20"
-                        : "bg-success/10 text-success border-success/20"
-                    }`}>
-                      {loan.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <Button size="sm" variant="outline" className="h-7 gap-1 text-[12px]">
-                      <RotateCcw className="h-3 w-3" /> Return
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Active Loans */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-[13px] font-semibold text-foreground">
+          Active Loans <span className="text-muted-foreground font-normal">({ACTIVE_LOANS.length})</span>
+        </h2>
+        <SearchBar
+          value={loanSearch}
+          onChange={setLoanSearch}
+          placeholder="Search loans..."
+          className="w-56"
+        />
       </div>
+
+      <DataTable
+        columns={columns}
+        data={filteredLoans}
+        keyExtractor={(l) => l.id}
+        onRowClick={(l) =>
+          setDrawerBook({
+            accessionId: l.accessionId,
+            title: l.book,
+            author: "",
+            category: "",
+            status: l.status,
+            location: "",
+          })
+        }
+        compact
+      />
+
+      <BookDetailDrawer
+        book={drawerBook}
+        open={!!drawerBook}
+        onClose={() => setDrawerBook(null)}
+      />
     </div>
   );
 }
