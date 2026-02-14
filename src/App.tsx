@@ -5,11 +5,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import Dashboard from "@/pages/Dashboard";
-import { Fines, Reports, SettingsPage } from "@/pages/PlaceholderPages";
+import { SettingsPage } from "@/pages/PlaceholderPages";
 import Inventory from "@/pages/Inventory";
 import Lending from "@/pages/Lending";
 import MembersPage from "@/pages/Members";
 import DonationsPage from "@/pages/Donations";
+import FinesPage from "@/pages/Fines";
+import ReportsPage from "@/pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,8 +29,8 @@ const App = () => (
             <Route path="/lending" element={<Lending />} />
             <Route path="/members" element={<MembersPage />} />
             <Route path="/donations" element={<DonationsPage />} />
-            <Route path="/fines" element={<Fines />} />
-            <Route path="/reports" element={<Reports />} />
+            <Route path="/fines" element={<FinesPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
