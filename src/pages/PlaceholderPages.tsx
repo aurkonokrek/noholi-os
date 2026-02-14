@@ -12,6 +12,4 @@ const PlaceholderPage = ({ title }: { title: string }) => (
   </div>
 );
 
-export const Fines = () => <PlaceholderPage title="Fines" />;
-export const Reports = () => <PlaceholderPage title="Reports" />;
 export const SettingsPage = () => <PlaceholderPage title="Settings" />;
