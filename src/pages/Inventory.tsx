@@ -7,6 +7,7 @@ import { FilterChips } from "@/components/FilterChips";
 import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
 import { BookDetailDrawer } from "@/components/BookDetailDrawer";
+import { useCanWrite, useCanDelete } from "@/lib/roles";
 
 type BookStatus = "Available" | "Issued" | "Reserved";
 
@@ -45,6 +46,8 @@ const CATEGORIES = ["All", "Fiction", "Non-Fiction", "Self-Help", "Memoir"] as c
 const STATUSES = ["All", "Available", "Issued", "Reserved"] as const;
 
 export default function Inventory() {
+  const canWrite = useCanWrite();
+  const canDelete = useCanDelete();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<string>("All");
@@ -94,20 +97,22 @@ export default function Inventory() {
       render: (b) => <StatusBadge variant={STATUS_VARIANT[b.status]}>{b.status}</StatusBadge>,
     },
     { key: "location", label: "Location", className: "text-muted-foreground", render: (b) => b.location },
-    {
-      key: "actions",
+    ...(canWrite ? [{
+      key: "actions" as const,
       label: "Actions",
       render: () => (
         <div className="flex items-center gap-1">
           <button className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
             <Pencil className="h-3.5 w-3.5" />
           </button>
-          <button className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          {canDelete && (
+            <button className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       ),
-    },
+    }] : []),
   ];
 
   return (
@@ -116,17 +121,23 @@ export default function Inventory() {
         title="Inventory"
         subtitle={`${filtered.length} of ${BOOKS.length} books`}
         actions={
-          <>
-            <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8">
-              <Upload className="h-3.5 w-3.5" /> Upload Excel
-            </Button>
+          canWrite ? (
+            <>
+              <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8">
+                <Upload className="h-3.5 w-3.5" /> Upload Excel
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8">
+                <Download className="h-3.5 w-3.5" /> Export
+              </Button>
+              <Button size="sm" className="gap-1.5 text-[13px] h-8">
+                <Plus className="h-3.5 w-3.5" /> Add Book
+              </Button>
+            </>
+          ) : (
             <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8">
               <Download className="h-3.5 w-3.5" /> Export
             </Button>
-            <Button size="sm" className="gap-1.5 text-[13px] h-8">
-              <Plus className="h-3.5 w-3.5" /> Add Book
-            </Button>
-          </>
+          )
         }
       />
 

@@ -5,6 +5,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { FilterChips } from "@/components/FilterChips";
 import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
+import { useCanWrite } from "@/lib/roles";
 
 interface Fine {
   id: string;
@@ -34,6 +35,7 @@ const INITIAL_FINES: Fine[] = [
 const FILTER_OPTIONS = ["all", "unpaid", "paid", "waived"] as const;
 
 export default function FinesPage() {
+  const canWrite = useCanWrite();
   const [fines, setFines] = useState<Fine[]>(INITIAL_FINES);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -95,7 +97,7 @@ export default function FinesPage() {
       headerClassName: "text-right",
       className: "text-right",
       render: (f) =>
-        f.status === "unpaid" ? (
+        f.status === "unpaid" && canWrite ? (
           <Button size="sm" variant="outline" className="h-6 text-[12px] px-2" onClick={() => markPaid(f.id)}>
             Mark Paid
           </Button>

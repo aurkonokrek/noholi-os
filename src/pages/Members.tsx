@@ -6,6 +6,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { FilterChips } from "@/components/FilterChips";
 import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
+import { useCanWrite, useCanDelete } from "@/lib/roles";
 
 interface Member {
   memberId: string;
@@ -38,6 +39,8 @@ const MEMBERS: Member[] = [
 const STATUS_OPTIONS = ["All", "Active", "Suspended", "Expired"] as const;
 
 export default function MembersPage() {
+  const canWrite = useCanWrite();
+  const canDelete = useCanDelete();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
 
@@ -64,20 +67,22 @@ export default function MembersPage() {
       label: "Status",
       render: (m) => <StatusBadge variant={STATUS_VARIANT[m.status]}>{m.status}</StatusBadge>,
     },
-    {
-      key: "actions",
+    ...(canWrite ? [{
+      key: "actions" as const,
       label: "Actions",
       render: () => (
         <div className="flex items-center gap-1">
           <button className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
             <Pencil className="h-3.5 w-3.5" />
           </button>
-          <button className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          {canDelete && (
+            <button className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       ),
-    },
+    }] : []),
   ];
 
   return (
@@ -86,9 +91,11 @@ export default function MembersPage() {
         title="Members"
         subtitle={`${MEMBERS.length} registered members`}
         actions={
-          <Button size="sm" className="gap-1.5 text-[13px] h-8">
-            <Plus className="h-3.5 w-3.5" /> Add Member
-          </Button>
+          canWrite ? (
+            <Button size="sm" className="gap-1.5 text-[13px] h-8">
+              <Plus className="h-3.5 w-3.5" /> Add Member
+            </Button>
+          ) : undefined
         }
       />
 
