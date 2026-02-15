@@ -19,7 +19,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Inventory: BookOpen,
   Lending: ArrowLeftRight,
   Members: Users,
-  Donations: Gift,
+  "Book Donations": Gift,
   Fines: BadgeDollarSign,
   Reports: BarChart3,
   Settings: Settings,

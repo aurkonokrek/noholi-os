@@ -7,6 +7,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { BookDetailDrawer } from "@/components/BookDetailDrawer";
+import { useCanWrite } from "@/lib/roles";
 
 interface ActiveLoan {
   id: string;
@@ -29,6 +30,7 @@ const ACTIVE_LOANS: ActiveLoan[] = [
 ];
 
 export default function Lending() {
+  const canWrite = useCanWrite();
   const [memberSearch, setMemberSearch] = useState("");
   const [bookSearch, setBookSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
@@ -89,23 +91,23 @@ export default function Lending() {
         </StatusBadge>
       ),
     },
-    {
-      key: "action",
+    ...(canWrite ? [{
+      key: "action" as const,
       label: "Action",
       render: () => (
         <Button size="sm" variant="outline" className="h-6 gap-1 text-[12px] px-2">
           <RotateCcw className="h-3 w-3" /> Return
         </Button>
       ),
-    },
+    }] : []),
   ];
 
   return (
     <div className="space-y-3">
       <PageHeader title="Lending" subtitle="Issue and return books" />
 
-      {/* Issue Workflow */}
-      <div className="bg-card border border-border rounded p-3">
+      {/* Issue Workflow — only for staff/admin */}
+      {canWrite && <div className="bg-card border border-border rounded p-3">
         <h2 className="text-[13px] font-semibold text-foreground mb-2">Issue Book</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <div className="space-y-1">
@@ -162,7 +164,7 @@ export default function Lending() {
             </Button>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Active Loans */}
       <div className="flex items-center justify-between">
