@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { Plus, Upload, Download, Pencil, Trash2, BookOpen } from "lucide-react";
+import { Plus, Upload, Download, Pencil, Trash2, BookOpen, Eye, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { FilterChips } from "@/components/FilterChips";
 import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
+import { RowActions } from "@/components/RowActions";
 import { BookDetailDrawer } from "@/components/BookDetailDrawer";
 import { useCanWrite, useCanDelete } from "@/lib/roles";
+import { useToast } from "@/hooks/use-toast";
 
 type BookStatus = "Available" | "Issued" | "Reserved";
 
@@ -27,7 +29,13 @@ const STATUS_VARIANT: Record<BookStatus, BadgeVariant> = {
   Reserved: "warning",
 };
 
-const BOOKS: Book[] = [
+const STATUS_CYCLE: Record<BookStatus, BookStatus> = {
+  Available: "Reserved",
+  Reserved: "Issued",
+  Issued: "Available",
+};
+
+const BOOKS_DATA: Book[] = [
   { accessionId: "ACC-0001", title: "Things Fall Apart", author: "Chinua Achebe", category: "Fiction", status: "Available", location: "Shelf A-12" },
   { accessionId: "ACC-0002", title: "Sapiens", author: "Yuval Noah Harari", category: "Non-Fiction", status: "Issued", location: "Shelf B-03" },
   { accessionId: "ACC-0003", title: "1984", author: "George Orwell", category: "Fiction", status: "Reserved", location: "Shelf A-07" },
@@ -48,6 +56,8 @@ const STATUSES = ["All", "Available", "Issued", "Reserved"] as const;
 export default function Inventory() {
   const canWrite = useCanWrite();
   const canDelete = useCanDelete();
+  const { toast } = useToast();
+  const [books, setBooks] = useState<Book[]>(BOOKS_DATA);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<string>("All");
@@ -61,7 +71,20 @@ export default function Inventory() {
     setStatusFilter("All");
   };
 
-  const filtered = BOOKS.filter((b) => {
+  const toggleStatus = (accessionId: string) => {
+    setBooks((prev) =>
+      prev.map((b) => {
+        if (b.accessionId === accessionId) {
+          const newStatus = STATUS_CYCLE[b.status];
+          toast({ title: "Status updated", description: `${b.title} → ${newStatus}` });
+          return { ...b, status: newStatus };
+        }
+        return b;
+      })
+    );
+  };
+
+  const filtered = books.filter((b) => {
     const matchesSearch =
       !search ||
       b.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -80,7 +103,7 @@ export default function Inventory() {
       render: (b) => (
         <div className="h-8 w-8 rounded bg-secondary flex items-center justify-center shrink-0">
           {b.thumbnail ? (
-            <img src={b.thumbnail} alt="" className="h-8 w-8 rounded object-cover" />
+            <img src={b.thumbnail} alt="" className="h-8 w-8 rounded object-cover" loading="lazy" />
           ) : (
             <BookOpen className="h-3.5 w-3.5 text-muted-foreground/50" />
           )}
@@ -94,32 +117,47 @@ export default function Inventory() {
     {
       key: "status",
       label: "Status",
-      render: (b) => <StatusBadge variant={STATUS_VARIANT[b.status]}>{b.status}</StatusBadge>,
+      render: (b) => (
+        <StatusBadge
+          variant={STATUS_VARIANT[b.status]}
+          onClick={canWrite ? () => toggleStatus(b.accessionId) : undefined}
+        >
+          {b.status}
+        </StatusBadge>
+      ),
     },
     { key: "location", label: "Location", className: "text-muted-foreground", render: (b) => b.location },
-    ...(canWrite ? [{
-      key: "actions" as const,
-      label: "Actions",
-      render: () => (
-        <div className="flex items-center gap-1">
-          <button className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-          {canDelete && (
-            <button className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-      ),
-    }] : []),
+    ...(canWrite
+      ? [
+          {
+            key: "actions" as const,
+            label: "",
+            headerClassName: "text-right",
+            className: "text-right",
+            render: (b: Book) => (
+              <RowActions
+                primary={[
+                  { label: "View", icon: Eye, onClick: () => setSelectedBook(b) },
+                  { label: "Edit", icon: Pencil, onClick: () => {} },
+                ]}
+                secondary={[
+                  { label: "Archive", icon: Archive, onClick: () => {} },
+                  ...(canDelete
+                    ? [{ label: "Delete", icon: Trash2, onClick: () => {}, variant: "destructive" as const }]
+                    : []),
+                ]}
+              />
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
     <div className="space-y-3">
       <PageHeader
         title="Inventory"
-        subtitle={`${filtered.length} of ${BOOKS.length} books`}
+        subtitle={`${filtered.length} of ${books.length} books`}
         actions={
           canWrite ? (
             <>
@@ -141,7 +179,6 @@ export default function Inventory() {
         }
       />
 
-      {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
         <SearchBar
           value={search}
