@@ -1,11 +1,14 @@
 import { useState } from "react";
+import { Eye, Pencil, Trash2, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { FilterChips } from "@/components/FilterChips";
 import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
-import { useCanWrite } from "@/lib/roles";
+import { RowActions } from "@/components/RowActions";
+import { useCanWrite, useCanDelete } from "@/lib/roles";
+import { useToast } from "@/hooks/use-toast";
 
 interface Fine {
   id: string;
@@ -36,6 +39,8 @@ const FILTER_OPTIONS = ["all", "unpaid", "paid", "waived"] as const;
 
 export default function FinesPage() {
   const canWrite = useCanWrite();
+  const canDelete = useCanDelete();
+  const { toast } = useToast();
   const [fines, setFines] = useState<Fine[]>(INITIAL_FINES);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -58,6 +63,14 @@ export default function FinesPage() {
     setFines((prev) =>
       prev.map((f) => (f.id === id ? { ...f, status: "paid" as const } : f))
     );
+    toast({ title: "Fine paid", description: `Fine ${id} marked as paid` });
+  };
+
+  const waiveFine = (id: string) => {
+    setFines((prev) =>
+      prev.map((f) => (f.id === id ? { ...f, status: "waived" as const } : f))
+    );
+    toast({ title: "Fine waived", description: `Fine ${id} has been waived` });
   };
 
   const hasFilters = search || filter !== "all";
@@ -91,18 +104,34 @@ export default function FinesPage() {
         </StatusBadge>
       ),
     },
-    {
-      key: "actions",
-      label: "",
-      headerClassName: "text-right",
-      className: "text-right",
-      render: (f) =>
-        f.status === "unpaid" && canWrite ? (
-          <Button size="sm" variant="outline" className="h-6 text-[12px] px-2" onClick={() => markPaid(f.id)}>
-            Mark Paid
-          </Button>
-        ) : null,
-    },
+    ...(canWrite
+      ? [
+          {
+            key: "actions" as const,
+            label: "",
+            headerClassName: "text-right",
+            className: "text-right",
+            render: (f: Fine) => (
+              <RowActions
+                primary={
+                  f.status === "unpaid"
+                    ? [{ label: "Mark Paid", icon: Eye, onClick: () => markPaid(f.id) }]
+                    : []
+                }
+                secondary={[
+                  ...(f.status === "unpaid"
+                    ? [{ label: "Waive fine", icon: Ban, onClick: () => waiveFine(f.id) }]
+                    : []),
+                  { label: "View details", icon: Eye, onClick: () => {} },
+                  ...(canDelete
+                    ? [{ label: "Delete", icon: Trash2, onClick: () => {}, variant: "destructive" as const }]
+                    : []),
+                ]}
+              />
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (

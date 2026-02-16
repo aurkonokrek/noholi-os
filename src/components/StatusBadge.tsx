@@ -15,18 +15,23 @@ interface StatusBadgeProps {
   children: React.ReactNode;
   variant?: BadgeVariant;
   className?: string;
+  /** If provided, badge becomes clickable */
+  onClick?: () => void;
 }
 
-export function StatusBadge({ children, variant = "default", className }: StatusBadgeProps) {
+export function StatusBadge({ children, variant = "default", className, onClick }: StatusBadgeProps) {
+  const Tag = onClick ? "button" : "span";
   return (
-    <span
+    <Tag
+      onClick={onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined}
       className={cn(
         "inline-block px-2 py-0.5 rounded text-[11px] font-medium border leading-tight",
         VARIANT_STYLES[variant],
+        onClick && "cursor-pointer hover:opacity-80 transition-opacity",
         className
       )}
     >
       {children}
-    </span>
+    </Tag>
   );
 }

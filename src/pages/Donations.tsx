@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X, Check, XCircle, Pencil } from "lucide-react";
+import { Plus, X, Check, XCircle, Pencil, Eye, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
@@ -7,6 +7,9 @@ import { SearchBar } from "@/components/SearchBar";
 import { FilterChips } from "@/components/FilterChips";
 import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
+import { RowActions } from "@/components/RowActions";
+import { useCanWrite, useCanDelete } from "@/lib/roles";
+import { useToast } from "@/hooks/use-toast";
 
 type ReviewStatus = "Pending" | "Approved" | "Rejected" | "Added to Inventory";
 
@@ -46,6 +49,9 @@ const INITIAL_DONATIONS: Donation[] = [
 const FILTER_OPTIONS = ["All", "Pending", "Approved", "Rejected", "Added to Inventory"] as const;
 
 export default function DonationsPage() {
+  const canWrite = useCanWrite();
+  const canDelete = useCanDelete();
+  const { toast } = useToast();
   const [donations, setDonations] = useState<Donation[]>(INITIAL_DONATIONS);
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
@@ -76,12 +82,14 @@ export default function DonationsPage() {
           : d
       )
     );
+    toast({ title: "Donation approved", description: `${id} approved and assigned accession ID` });
   };
 
   const reject = (id: string) => {
     setDonations((prev) =>
       prev.map((d) => (d.id === id ? { ...d, reviewStatus: "Rejected" as const } : d))
     );
+    toast({ title: "Donation rejected", description: `${id} has been rejected` });
   };
 
   const pendingCount = donations.filter((d) => d.reviewStatus === "Pending").length;
@@ -107,37 +115,36 @@ export default function DonationsPage() {
       className: "text-muted-foreground font-mono text-[12px]",
       render: (d) => d.assignedAccessionId ?? "—",
     },
-    {
-      key: "actions",
-      label: "Actions",
-      render: (d) => {
-        if (d.reviewStatus !== "Pending") return null;
-        return (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={(e) => { e.stopPropagation(); approve(d.id); }}
-              className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-              title="Approve & assign accession ID"
-            >
-              <Check className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); reject(d.id); }}
-              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-              title="Reject donation"
-            >
-              <XCircle className="h-3.5 w-3.5" />
-            </button>
-            <button
-              className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-              title="Edit details"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        );
-      },
-    },
+    ...(canWrite
+      ? [
+          {
+            key: "actions" as const,
+            label: "",
+            headerClassName: "text-right",
+            className: "text-right",
+            render: (d: Donation) => (
+              <RowActions
+                primary={
+                  d.reviewStatus === "Pending"
+                    ? [
+                        { label: "Approve", icon: Check, onClick: () => approve(d.id) },
+                        { label: "Reject", icon: XCircle, onClick: () => reject(d.id), variant: "destructive" as const },
+                      ]
+                    : [{ label: "View", icon: Eye, onClick: () => {} }]
+                }
+                secondary={[
+                  ...(d.reviewStatus === "Pending"
+                    ? [{ label: "Edit", icon: Pencil, onClick: () => {} }]
+                    : []),
+                  ...(canDelete
+                    ? [{ label: "Delete", icon: Trash2, onClick: () => {}, variant: "destructive" as const }]
+                    : []),
+                ]}
+              />
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -146,10 +153,12 @@ export default function DonationsPage() {
         title="Book Donations"
         subtitle={`${donations.length} donations · ${pendingCount} pending review`}
         actions={
-          <Button size="sm" className="gap-1.5 text-[13px] h-8" onClick={() => setShowForm(!showForm)}>
-            {showForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-            {showForm ? "Cancel" : "Record New Donation"}
-          </Button>
+          canWrite ? (
+            <Button size="sm" className="gap-1.5 text-[13px] h-8" onClick={() => setShowForm(!showForm)}>
+              {showForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+              {showForm ? "Cancel" : "Record New Donation"}
+            </Button>
+          ) : undefined
         }
       />
 

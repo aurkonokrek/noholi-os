@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { Search, CalendarDays, CheckCircle2, RotateCcw, BookOpen } from "lucide-react";
+import { Search, CalendarDays, CheckCircle2, RotateCcw, BookOpen, Eye, MoreVertical, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge } from "@/components/StatusBadge";
+import { RowActions } from "@/components/RowActions";
 import { BookDetailDrawer } from "@/components/BookDetailDrawer";
 import { useCanWrite } from "@/lib/roles";
+import { useToast } from "@/hooks/use-toast";
 
 interface ActiveLoan {
   id: string;
@@ -20,7 +22,7 @@ interface ActiveLoan {
   status: "Active" | "Overdue";
 }
 
-const ACTIVE_LOANS: ActiveLoan[] = [
+const INITIAL_LOANS: ActiveLoan[] = [
   { id: "LN-0401", member: "Alice Mwangi", memberId: "MEM-1001", book: "Sapiens", accessionId: "ACC-0002", issuedDate: "2026-01-28", dueDate: "2026-02-11", status: "Overdue" },
   { id: "LN-0402", member: "Sarah Njoki", memberId: "MEM-1004", book: "1984", accessionId: "ACC-0003", issuedDate: "2026-02-05", dueDate: "2026-02-19", status: "Active" },
   { id: "LN-0403", member: "Peter Kamau", memberId: "MEM-1005", book: "Beloved", accessionId: "ACC-0005", issuedDate: "2026-02-01", dueDate: "2026-02-15", status: "Active" },
@@ -31,6 +33,8 @@ const ACTIVE_LOANS: ActiveLoan[] = [
 
 export default function Lending() {
   const canWrite = useCanWrite();
+  const { toast } = useToast();
+  const [loans, setLoans] = useState<ActiveLoan[]>(INITIAL_LOANS);
   const [memberSearch, setMemberSearch] = useState("");
   const [bookSearch, setBookSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
@@ -40,7 +44,15 @@ export default function Lending() {
 
   const canIssue = selectedMember && selectedBook;
 
-  const filteredLoans = ACTIVE_LOANS.filter(
+  const returnBook = (id: string) => {
+    const loan = loans.find((l) => l.id === id);
+    setLoans((prev) => prev.filter((l) => l.id !== id));
+    if (loan) {
+      toast({ title: "Book returned", description: `${loan.book} returned by ${loan.member}` });
+    }
+  };
+
+  const filteredLoans = loans.filter(
     (l) =>
       !loanSearch ||
       l.member.toLowerCase().includes(loanSearch.toLowerCase()) ||
@@ -91,85 +103,109 @@ export default function Lending() {
         </StatusBadge>
       ),
     },
-    ...(canWrite ? [{
-      key: "action" as const,
-      label: "Action",
-      render: () => (
-        <Button size="sm" variant="outline" className="h-6 gap-1 text-[12px] px-2">
-          <RotateCcw className="h-3 w-3" /> Return
-        </Button>
-      ),
-    }] : []),
+    ...(canWrite
+      ? [
+          {
+            key: "actions" as const,
+            label: "",
+            headerClassName: "text-right",
+            className: "text-right",
+            render: (l: ActiveLoan) => (
+              <RowActions
+                primary={[
+                  { label: "Return", icon: RotateCcw, onClick: () => returnBook(l.id) },
+                  {
+                    label: "View",
+                    icon: Eye,
+                    onClick: () =>
+                      setDrawerBook({
+                        accessionId: l.accessionId,
+                        title: l.book,
+                        author: "",
+                        category: "",
+                        status: l.status,
+                        location: "",
+                      }),
+                  },
+                ]}
+                secondary={[
+                  { label: "Flag overdue", icon: AlertTriangle, onClick: () => {}, variant: "destructive" as const },
+                ]}
+              />
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
     <div className="space-y-3">
       <PageHeader title="Lending" subtitle="Issue and return books" />
 
-      {/* Issue Workflow — only for staff/admin */}
-      {canWrite && <div className="bg-card border border-border rounded p-3">
-        <h2 className="text-[13px] font-semibold text-foreground mb-2">Issue Book</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-          <div className="space-y-1">
-            <label className="text-[12px] font-medium text-muted-foreground">Member</label>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search member..."
-                value={memberSearch}
-                onChange={(e) => {
-                  setMemberSearch(e.target.value);
-                  setSelectedMember(e.target.value.length > 2 ? e.target.value : null);
-                }}
-                className="pl-8 h-8 text-[13px]"
-              />
+      {canWrite && (
+        <div className="bg-card border border-border rounded p-3">
+          <h2 className="text-[13px] font-semibold text-foreground mb-2">Issue Book</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <div className="space-y-1">
+              <label className="text-[12px] font-medium text-muted-foreground">Member</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search member..."
+                  value={memberSearch}
+                  onChange={(e) => {
+                    setMemberSearch(e.target.value);
+                    setSelectedMember(e.target.value.length > 2 ? e.target.value : null);
+                  }}
+                  className="pl-8 h-8 text-[13px]"
+                />
+              </div>
+              {selectedMember && (
+                <p className="text-[11px] text-success flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Member found
+                </p>
+              )}
             </div>
-            {selectedMember && (
-              <p className="text-[11px] text-success flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3" /> Member found
-              </p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <label className="text-[12px] font-medium text-muted-foreground">Book</label>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search book or ACC ID..."
-                value={bookSearch}
-                onChange={(e) => {
-                  setBookSearch(e.target.value);
-                  setSelectedBook(e.target.value.length > 2 ? e.target.value : null);
-                }}
-                className="pl-8 h-8 text-[13px]"
-              />
+            <div className="space-y-1">
+              <label className="text-[12px] font-medium text-muted-foreground">Book</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search book or ACC ID..."
+                  value={bookSearch}
+                  onChange={(e) => {
+                    setBookSearch(e.target.value);
+                    setSelectedBook(e.target.value.length > 2 ? e.target.value : null);
+                  }}
+                  className="pl-8 h-8 text-[13px]"
+                />
+              </div>
+              {selectedBook && (
+                <p className="text-[11px] text-success flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Book available
+                </p>
+              )}
             </div>
-            {selectedBook && (
-              <p className="text-[11px] text-success flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3" /> Book available
-              </p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <label className="text-[12px] font-medium text-muted-foreground">Due Date</label>
-            <div className="relative">
-              <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input type="date" defaultValue="2026-02-27" className="pl-8 h-8 text-[13px]" />
+            <div className="space-y-1">
+              <label className="text-[12px] font-medium text-muted-foreground">Due Date</label>
+              <div className="relative">
+                <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input type="date" defaultValue="2026-02-27" className="pl-8 h-8 text-[13px]" />
+              </div>
             </div>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[12px] font-medium text-muted-foreground">&nbsp;</label>
-            <Button size="sm" className="w-full h-8 text-[13px]" disabled={!canIssue}>
-              Confirm Issue
-            </Button>
+            <div className="space-y-1">
+              <label className="text-[12px] font-medium text-muted-foreground">&nbsp;</label>
+              <Button size="sm" className="w-full h-8 text-[13px]" disabled={!canIssue}>
+                Confirm Issue
+              </Button>
+            </div>
           </div>
         </div>
-      </div>}
+      )}
 
-      {/* Active Loans */}
       <div className="flex items-center justify-between">
         <h2 className="text-[13px] font-semibold text-foreground">
-          Active Loans <span className="text-muted-foreground font-normal">({ACTIVE_LOANS.length})</span>
+          Active Loans <span className="text-muted-foreground font-normal">({loans.length})</span>
         </h2>
         <SearchBar
           value={loanSearch}
