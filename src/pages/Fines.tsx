@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Eye, Pencil, Trash2, Ban } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Eye, Trash2, Ban, CheckCircle2, DollarSign } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { FilterChips } from "@/components/FilterChips";
 import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
 import { RowActions } from "@/components/RowActions";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useCanWrite, useCanDelete } from "@/lib/roles";
 import { useToast } from "@/hooks/use-toast";
 
@@ -44,6 +44,10 @@ export default function FinesPage() {
   const [fines, setFines] = useState<Fine[]>(INITIAL_FINES);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [confirmAction, setConfirmAction] = useState<{
+    fineId: string;
+    action: "pay" | "waive";
+  } | null>(null);
 
   const filtered = fines.filter((f) => {
     const matchesFilter = filter === "all" || f.status === filter;
@@ -59,18 +63,18 @@ export default function FinesPage() {
     .filter((f) => f.status === "unpaid")
     .reduce((s, f) => s + f.amount, 0);
 
-  const markPaid = (id: string) => {
+  const handleConfirm = () => {
+    if (!confirmAction) return;
+    const { fineId, action } = confirmAction;
+    const newStatus = action === "pay" ? "paid" : "waived";
     setFines((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, status: "paid" as const } : f))
+      prev.map((f) => (f.id === fineId ? { ...f, status: newStatus as Fine["status"] } : f))
     );
-    toast({ title: "Fine paid", description: `Fine ${id} marked as paid` });
-  };
-
-  const waiveFine = (id: string) => {
-    setFines((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, status: "waived" as const } : f))
-    );
-    toast({ title: "Fine waived", description: `Fine ${id} has been waived` });
+    toast({
+      title: action === "pay" ? "Fine paid" : "Fine waived",
+      description: `Fine ${fineId} marked as ${newStatus}`,
+    });
+    setConfirmAction(null);
   };
 
   const hasFilters = search || filter !== "all";
@@ -115,12 +119,12 @@ export default function FinesPage() {
               <RowActions
                 primary={
                   f.status === "unpaid"
-                    ? [{ label: "Mark Paid", icon: Eye, onClick: () => markPaid(f.id) }]
+                    ? [{ label: "Mark Paid", icon: DollarSign, onClick: () => setConfirmAction({ fineId: f.id, action: "pay" }) }]
                     : []
                 }
                 secondary={[
                   ...(f.status === "unpaid"
-                    ? [{ label: "Waive fine", icon: Ban, onClick: () => waiveFine(f.id) }]
+                    ? [{ label: "Waive fine", icon: Ban, onClick: () => setConfirmAction({ fineId: f.id, action: "waive" }) }]
                     : []),
                   { label: "View details", icon: Eye, onClick: () => {} },
                   ...(canDelete
@@ -133,6 +137,8 @@ export default function FinesPage() {
         ]
       : []),
   ];
+
+  const fine = confirmAction ? fines.find((f) => f.id === confirmAction.fineId) : null;
 
   return (
     <div className="space-y-3">
@@ -169,6 +175,20 @@ export default function FinesPage() {
         keyExtractor={(f) => f.id}
         emptyMessage="No fines found."
         compact
+      />
+
+      <ConfirmDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => !open && setConfirmAction(null)}
+        title={confirmAction?.action === "pay" ? "Confirm Payment" : "Waive Fine"}
+        description={
+          confirmAction?.action === "pay"
+            ? `Mark fine ${confirmAction?.fineId} (KES ${fine?.amount.toLocaleString() ?? 0}) as paid?`
+            : `Waive fine ${confirmAction?.fineId} (KES ${fine?.amount.toLocaleString() ?? 0})? This action cannot be undone.`
+        }
+        confirmLabel={confirmAction?.action === "pay" ? "Confirm Paid" : "Waive Fine"}
+        variant={confirmAction?.action === "waive" ? "destructive" : "default"}
+        onConfirm={handleConfirm}
       />
     </div>
   );

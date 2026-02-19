@@ -9,7 +9,6 @@ import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
 import { RowActions } from "@/components/RowActions";
 import { BookDetailDrawer } from "@/components/BookDetailDrawer";
 import { useCanWrite, useCanDelete } from "@/lib/roles";
-import { useToast } from "@/hooks/use-toast";
 
 type BookStatus = "Available" | "Issued" | "Reserved";
 
@@ -27,12 +26,6 @@ const STATUS_VARIANT: Record<BookStatus, BadgeVariant> = {
   Available: "success",
   Issued: "accent",
   Reserved: "warning",
-};
-
-const STATUS_CYCLE: Record<BookStatus, BookStatus> = {
-  Available: "Reserved",
-  Reserved: "Issued",
-  Issued: "Available",
 };
 
 const BOOKS_DATA: Book[] = [
@@ -56,8 +49,7 @@ const STATUSES = ["All", "Available", "Issued", "Reserved"] as const;
 export default function Inventory() {
   const canWrite = useCanWrite();
   const canDelete = useCanDelete();
-  const { toast } = useToast();
-  const [books, setBooks] = useState<Book[]>(BOOKS_DATA);
+  const [books] = useState<Book[]>(BOOKS_DATA);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<string>("All");
@@ -69,19 +61,6 @@ export default function Inventory() {
     setSearch("");
     setCategoryFilter("All");
     setStatusFilter("All");
-  };
-
-  const toggleStatus = (accessionId: string) => {
-    setBooks((prev) =>
-      prev.map((b) => {
-        if (b.accessionId === accessionId) {
-          const newStatus = STATUS_CYCLE[b.status];
-          toast({ title: "Status updated", description: `${b.title} → ${newStatus}` });
-          return { ...b, status: newStatus };
-        }
-        return b;
-      })
-    );
   };
 
   const filtered = books.filter((b) => {
@@ -118,10 +97,7 @@ export default function Inventory() {
       key: "status",
       label: "Status",
       render: (b) => (
-        <StatusBadge
-          variant={STATUS_VARIANT[b.status]}
-          onClick={canWrite ? () => toggleStatus(b.accessionId) : undefined}
-        >
+        <StatusBadge variant={STATUS_VARIANT[b.status]}>
           {b.status}
         </StatusBadge>
       ),
@@ -178,6 +154,10 @@ export default function Inventory() {
           )
         }
       />
+
+      <p className="text-[12px] text-muted-foreground">
+        Book statuses are system-derived from lending activity and cannot be changed manually.
+      </p>
 
       <div className="flex items-center gap-2 flex-wrap">
         <SearchBar
