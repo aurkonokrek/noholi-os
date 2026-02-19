@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export function TopBar() {
   return (
@@ -12,6 +13,7 @@ export function TopBar() {
         />
       </div>
       <div className="ml-auto flex items-center gap-3">
+        <NotificationBell />
         <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-[11px] font-semibold">
           A
         </div>

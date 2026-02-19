@@ -12,6 +12,7 @@ import MembersPage from "@/pages/Members";
 import DonationsPage from "@/pages/Donations";
 import FinesPage from "@/pages/Fines";
 import ReportsPage from "@/pages/Reports";
+import NotificationsPage from "@/pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/donations" element={<DonationsPage />} />
             <Route path="/fines" element={<FinesPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
