@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Eye, Archive, User } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Archive, User, UserX, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
@@ -8,6 +8,7 @@ import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
 import { RowActions } from "@/components/RowActions";
 import { ContactInfo } from "@/components/ContactInfo";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useCanWrite, useCanDelete } from "@/lib/roles";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,12 +27,6 @@ const STATUS_VARIANT: Record<Member["status"], BadgeVariant> = {
   Active: "success",
   Suspended: "destructive",
   Expired: "warning",
-};
-
-const STATUS_CYCLE: Record<Member["status"], Member["status"]> = {
-  Active: "Suspended",
-  Suspended: "Active",
-  Expired: "Active",
 };
 
 const MEMBERS_DATA: Member[] = [
@@ -56,23 +51,27 @@ export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>(MEMBERS_DATA);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [confirmAction, setConfirmAction] = useState<{
+    memberId: string;
+    memberName: string;
+    action: "suspend" | "reactivate";
+  } | null>(null);
 
   const hasFilters = search || statusFilter !== "All";
 
-  const toggleStatus = (memberId: string) => {
+  const handleStatusChange = () => {
+    if (!confirmAction) return;
+    const newStatus = confirmAction.action === "suspend" ? "Suspended" : "Active";
     setMembers((prev) =>
-      prev.map((m) => {
-        if (m.memberId === memberId) {
-          const newStatus = STATUS_CYCLE[m.status];
-          toast({
-            title: "Status updated",
-            description: `${m.name} is now ${newStatus}`,
-          });
-          return { ...m, status: newStatus };
-        }
-        return m;
-      })
+      prev.map((m) =>
+        m.memberId === confirmAction.memberId ? { ...m, status: newStatus as Member["status"] } : m
+      )
     );
+    toast({
+      title: confirmAction.action === "suspend" ? "Member suspended" : "Member reactivated",
+      description: `${confirmAction.memberName} is now ${newStatus}`,
+    });
+    setConfirmAction(null);
   };
 
   const filtered = members.filter((m) => {
@@ -113,10 +112,7 @@ export default function MembersPage() {
       key: "status",
       label: "Status",
       render: (m) => (
-        <StatusBadge
-          variant={STATUS_VARIANT[m.status]}
-          onClick={canWrite ? () => toggleStatus(m.memberId) : undefined}
-        >
+        <StatusBadge variant={STATUS_VARIANT[m.status]}>
           {m.status}
         </StatusBadge>
       ),
@@ -135,6 +131,18 @@ export default function MembersPage() {
                   { label: "Edit", icon: Pencil, onClick: () => {} },
                 ]}
                 secondary={[
+                  ...(m.status === "Active"
+                    ? [{
+                        label: "Suspend",
+                        icon: UserX,
+                        onClick: () => setConfirmAction({ memberId: m.memberId, memberName: m.name, action: "suspend" }),
+                        variant: "destructive" as const,
+                      }]
+                    : [{
+                        label: "Reactivate",
+                        icon: UserCheck,
+                        onClick: () => setConfirmAction({ memberId: m.memberId, memberName: m.name, action: "reactivate" }),
+                      }]),
                   { label: "Archive", icon: Archive, onClick: () => {} },
                   ...(canDelete
                     ? [{ label: "Delete", icon: Trash2, onClick: () => {}, variant: "destructive" as const }]
@@ -189,6 +197,20 @@ export default function MembersPage() {
         keyExtractor={(m) => m.memberId}
         emptyMessage="No members found."
         compact
+      />
+
+      <ConfirmDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => !open && setConfirmAction(null)}
+        title={confirmAction?.action === "suspend" ? "Suspend Member" : "Reactivate Member"}
+        description={
+          confirmAction?.action === "suspend"
+            ? `Are you sure you want to suspend ${confirmAction.memberName}? They will lose access to borrowing privileges.`
+            : `Reactivate ${confirmAction?.memberName ?? ""}? They will regain borrowing privileges.`
+        }
+        confirmLabel={confirmAction?.action === "suspend" ? "Suspend" : "Reactivate"}
+        variant={confirmAction?.action === "suspend" ? "destructive" : "default"}
+        onConfirm={handleStatusChange}
       />
     </div>
   );
