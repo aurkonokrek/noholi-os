@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Upload, Download, Pencil, Trash2, BookOpen, Eye, Archive } from "lucide-react";
+import { Plus, Upload, Download, Pencil, Trash2, BookOpen, Eye, Package, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
@@ -8,52 +8,33 @@ import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
 import { RowActions } from "@/components/RowActions";
 import { BookDetailDrawer } from "@/components/BookDetailDrawer";
+import { AdjustStockDialog } from "@/components/AdjustStockDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useInventory, deriveStatus, isLowStock, type Book, type BookStatus } from "@/hooks/use-inventory";
 import { useCanWrite, useCanDelete } from "@/lib/roles";
-
-type BookStatus = "Available" | "Issued" | "Reserved";
-
-interface Book {
-  accessionId: string;
-  title: string;
-  author: string;
-  category: string;
-  status: BookStatus;
-  location: string;
-  thumbnail?: string;
-}
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const STATUS_VARIANT: Record<BookStatus, BadgeVariant> = {
   Available: "success",
-  Issued: "accent",
-  Reserved: "warning",
+  Unavailable: "warning",
+  "Out of Stock": "destructive",
 };
 
-const BOOKS_DATA: Book[] = [
-  { accessionId: "ACC-0001", title: "Things Fall Apart", author: "Chinua Achebe", category: "Fiction", status: "Available", location: "Shelf A-12" },
-  { accessionId: "ACC-0002", title: "Sapiens", author: "Yuval Noah Harari", category: "Non-Fiction", status: "Issued", location: "Shelf B-03" },
-  { accessionId: "ACC-0003", title: "1984", author: "George Orwell", category: "Fiction", status: "Reserved", location: "Shelf A-07" },
-  { accessionId: "ACC-0004", title: "The Great Gatsby", author: "F. Scott Fitzgerald", category: "Fiction", status: "Available", location: "Shelf A-14" },
-  { accessionId: "ACC-0005", title: "Beloved", author: "Toni Morrison", category: "Fiction", status: "Issued", location: "Shelf C-01" },
-  { accessionId: "ACC-0006", title: "Americanah", author: "Chimamanda Ngozi Adichie", category: "Fiction", status: "Available", location: "Shelf A-20" },
-  { accessionId: "ACC-0007", title: "Atomic Habits", author: "James Clear", category: "Self-Help", status: "Issued", location: "Shelf D-05" },
-  { accessionId: "ACC-0008", title: "Half of a Yellow Sun", author: "Chimamanda Ngozi Adichie", category: "Fiction", status: "Available", location: "Shelf A-21" },
-  { accessionId: "ACC-0009", title: "Educated", author: "Tara Westover", category: "Memoir", status: "Reserved", location: "Shelf B-11" },
-  { accessionId: "ACC-0010", title: "Weep Not, Child", author: "Ngũgĩ wa Thiong'o", category: "Fiction", status: "Available", location: "Shelf A-03" },
-  { accessionId: "ACC-0011", title: "Thinking, Fast and Slow", author: "Daniel Kahneman", category: "Non-Fiction", status: "Issued", location: "Shelf B-08" },
-  { accessionId: "ACC-0012", title: "The Alchemist", author: "Paulo Coelho", category: "Fiction", status: "Available", location: "Shelf A-09" },
-];
-
 const CATEGORIES = ["All", "Fiction", "Non-Fiction", "Self-Help", "Memoir"] as const;
-const STATUSES = ["All", "Available", "Issued", "Reserved"] as const;
+const STATUSES = ["All", "Available", "Unavailable", "Out of Stock"] as const;
 
 export default function Inventory() {
   const canWrite = useCanWrite();
   const canDelete = useCanDelete();
-  const [books] = useState<Book[]>(BOOKS_DATA);
+  const { books, stats, adjustStock, deleteBook } = useInventory();
+
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [stockBook, setStockBook] = useState<Book | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Book | null>(null);
 
   const hasFilters = search || categoryFilter !== "All" || statusFilter !== "All";
 
@@ -68,11 +49,34 @@ export default function Inventory() {
       !search ||
       b.title.toLowerCase().includes(search.toLowerCase()) ||
       b.author.toLowerCase().includes(search.toLowerCase()) ||
-      b.accessionId.toLowerCase().includes(search.toLowerCase());
+      b.id.toLowerCase().includes(search.toLowerCase()) ||
+      b.isbn.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === "All" || b.category === categoryFilter;
-    const matchesStatus = statusFilter === "All" || b.status === statusFilter;
+    const status = deriveStatus(b);
+    const matchesStatus = statusFilter === "All" || status === statusFilter;
     return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  const handleAdjustStock = (bookId: string, newTotal: number) => {
+    const result = adjustStock(bookId, newTotal);
+    if (result.success) {
+      toast.success("Stock updated successfully");
+      return { success: true } as { success: boolean; error?: string };
+    }
+    toast.error(result.error);
+    return { success: false, error: result.error };
+  };
+
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    const result = deleteBook(deleteTarget.id);
+    if (result.success) {
+      toast.success(`"${deleteTarget.title}" deleted`);
+    } else {
+      toast.error(result.error);
+    }
+    setDeleteTarget(null);
+  };
 
   const columns: Column<Book>[] = [
     {
@@ -89,20 +93,49 @@ export default function Inventory() {
         </div>
       ),
     },
-    { key: "accessionId", label: "Accession ID", className: "text-muted-foreground font-mono text-[12px]", render: (b) => b.accessionId },
     { key: "title", label: "Title", className: "font-medium text-foreground", render: (b) => b.title },
     { key: "author", label: "Author", className: "text-muted-foreground", render: (b) => b.author },
-    { key: "category", label: "Category", className: "text-muted-foreground", render: (b) => b.category },
+    {
+      key: "total",
+      label: "Total",
+      className: "text-center font-mono text-[12px]",
+      headerClassName: "text-center",
+      render: (b) => b.totalCopies,
+    },
+    {
+      key: "available",
+      label: "Available",
+      className: "text-center font-mono text-[12px]",
+      headerClassName: "text-center",
+      render: (b) => (
+        <span className={cn(isLowStock(b) && "text-warning font-semibold")}>
+          {b.availableCopies}
+          {isLowStock(b) && <AlertTriangle className="inline h-3 w-3 ml-1 -mt-0.5" />}
+        </span>
+      ),
+    },
+    {
+      key: "issued",
+      label: "Issued",
+      className: "text-center font-mono text-[12px]",
+      headerClassName: "text-center",
+      render: (b) => b.issuedCopies,
+    },
+    {
+      key: "reserved",
+      label: "Reserved",
+      className: "text-center font-mono text-[12px]",
+      headerClassName: "text-center",
+      render: (b) => b.reservedCopies,
+    },
     {
       key: "status",
       label: "Status",
-      render: (b) => (
-        <StatusBadge variant={STATUS_VARIANT[b.status]}>
-          {b.status}
-        </StatusBadge>
-      ),
+      render: (b) => {
+        const status = deriveStatus(b);
+        return <StatusBadge variant={STATUS_VARIANT[status]}>{status}</StatusBadge>;
+      },
     },
-    { key: "location", label: "Location", className: "text-muted-foreground", render: (b) => b.location },
     ...(canWrite
       ? [
           {
@@ -117,9 +150,15 @@ export default function Inventory() {
                   { label: "Edit", icon: Pencil, onClick: () => {} },
                 ]}
                 secondary={[
-                  { label: "Archive", icon: Archive, onClick: () => {} },
+                  { label: "Adjust Stock", icon: Package, onClick: () => setStockBook(b) },
                   ...(canDelete
-                    ? [{ label: "Delete", icon: Trash2, onClick: () => {}, variant: "destructive" as const }]
+                    ? [{
+                        label: "Delete",
+                        icon: Trash2,
+                        onClick: () => setDeleteTarget(b),
+                        variant: "destructive" as const,
+                        disabled: b.issuedCopies > 0 || b.reservedCopies > 0,
+                      }]
                     : []),
                 ]}
               />
@@ -133,7 +172,7 @@ export default function Inventory() {
     <div className="space-y-3">
       <PageHeader
         title="Inventory"
-        subtitle={`${filtered.length} of ${books.length} books`}
+        subtitle={`${stats.total} titles · ${stats.totalCopies} copies · ${stats.issued} issued · ${stats.reserved} reserved`}
         actions={
           canWrite ? (
             <>
@@ -155,15 +194,22 @@ export default function Inventory() {
         }
       />
 
+      {stats.lowStock > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded border border-warning/30 bg-warning/5 text-[12px] text-warning">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span>{stats.lowStock} title{stats.lowStock > 1 ? "s" : ""} with low stock (≤ 2 available copies)</span>
+        </div>
+      )}
+
       <p className="text-[12px] text-muted-foreground">
-        Book statuses are system-derived from lending activity and cannot be changed manually.
+        Statuses are system-derived from copy quantities. Only Total Copies is editable.
       </p>
 
       <div className="flex items-center gap-2 flex-wrap">
         <SearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Search by title, author, or ID..."
+          placeholder="Search by title, author, ISBN, or ID..."
           className="flex-1 min-w-[200px] max-w-xs"
         />
         <FilterChips
@@ -187,7 +233,7 @@ export default function Inventory() {
       <DataTable
         columns={columns}
         data={filtered}
-        keyExtractor={(b) => b.accessionId}
+        keyExtractor={(b) => b.id}
         onRowClick={(book) => setSelectedBook(book)}
         emptyMessage="No books match your filters."
         compact
@@ -197,6 +243,23 @@ export default function Inventory() {
         book={selectedBook}
         open={!!selectedBook}
         onClose={() => setSelectedBook(null)}
+      />
+
+      <AdjustStockDialog
+        book={stockBook}
+        open={!!stockBook}
+        onClose={() => setStockBook(null)}
+        onConfirm={handleAdjustStock}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title="Delete Book"
+        description={`Are you sure you want to delete "${deleteTarget?.title}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={handleDelete}
       />
     </div>
   );
