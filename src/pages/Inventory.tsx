@@ -21,7 +21,8 @@ const STATUS_VARIANT: Record<BookStatus, BadgeVariant> = {
   "Out of Stock": "destructive",
 };
 
-const CATEGORIES = ["All", "Fiction", "Non-Fiction", "Self-Help", "Memoir"] as const;
+const GENRES = ["All", "Fiction", "Non-Fiction", "Self-Help", "Memoir", "Poetry", "Science", "History", "Philosophy", "Religion", "Children"] as const;
+const LANGUAGES = ["All", "Bangla", "English"] as const;
 const STATUSES = ["All", "Available", "Unavailable", "Out of Stock"] as const;
 
 export default function Inventory() {
@@ -30,17 +31,19 @@ export default function Inventory() {
   const { books, stats, adjustStock, deleteBook } = useInventory();
 
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("All");
+  const [genreFilter, setGenreFilter] = useState<string>("All");
+  const [languageFilter, setLanguageFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [stockBook, setStockBook] = useState<Book | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Book | null>(null);
 
-  const hasFilters = search || categoryFilter !== "All" || statusFilter !== "All";
+  const hasFilters = search || genreFilter !== "All" || languageFilter !== "All" || statusFilter !== "All";
 
   const resetFilters = () => {
     setSearch("");
-    setCategoryFilter("All");
+    setGenreFilter("All");
+    setLanguageFilter("All");
     setStatusFilter("All");
   };
 
@@ -51,10 +54,11 @@ export default function Inventory() {
       b.author.toLowerCase().includes(search.toLowerCase()) ||
       b.id.toLowerCase().includes(search.toLowerCase()) ||
       b.isbn.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = categoryFilter === "All" || b.category === categoryFilter;
+    const matchesGenre = genreFilter === "All" || b.genre === genreFilter;
+    const matchesLanguage = languageFilter === "All" || b.language === languageFilter;
     const status = deriveStatus(b);
     const matchesStatus = statusFilter === "All" || status === statusFilter;
-    return matchesSearch && matchesCategory && matchesStatus;
+    return matchesSearch && matchesGenre && matchesLanguage && matchesStatus;
   });
 
   const handleAdjustStock = (bookId: string, newTotal: number) => {
@@ -95,6 +99,8 @@ export default function Inventory() {
     },
     { key: "title", label: "Title", className: "font-medium text-foreground", render: (b) => b.title },
     { key: "author", label: "Author", className: "text-muted-foreground", render: (b) => b.author },
+    { key: "genre", label: "Genre", className: "text-muted-foreground", render: (b) => b.genre },
+    { key: "language", label: "Language", className: "text-muted-foreground", render: (b) => b.language },
     {
       key: "total",
       label: "Total",
@@ -213,9 +219,14 @@ export default function Inventory() {
           className="flex-1 min-w-[200px] max-w-xs"
         />
         <FilterChips
-          options={[...CATEGORIES]}
-          value={categoryFilter as typeof CATEGORIES[number]}
-          onChange={setCategoryFilter}
+          options={[...GENRES]}
+          value={genreFilter as typeof GENRES[number]}
+          onChange={setGenreFilter}
+        />
+        <FilterChips
+          options={[...LANGUAGES]}
+          value={languageFilter as typeof LANGUAGES[number]}
+          onChange={setLanguageFilter}
         />
         <FilterChips
           options={[...STATUSES]}

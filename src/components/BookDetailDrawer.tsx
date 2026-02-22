@@ -20,7 +20,7 @@ type BookLike = InventoryBook | {
   accessionId?: string;
   title: string;
   author: string;
-  category: string;
+  genre: string;
   status: string;
   location: string;
   thumbnail?: string;
@@ -92,7 +92,8 @@ export function BookDetailDrawer({ book, open, onClose }: BookDetailDrawerProps)
             {[
               isFullBook ? ["Book ID", book.id] : ("accessionId" in book && book.accessionId ? ["Accession ID", book.accessionId] : null),
               ["Author", book.author],
-              ["Category", book.category],
+              ["Genre", book.genre],
+              ...(isFullBook ? [["Language", book.language]] : []),
               ...(isFullBook ? [["ISBN", book.isbn || "—"]] : []),
               ["Location", book.location],
               ...(isFullBook ? [

@@ -40,7 +40,7 @@ export default function Lending() {
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [selectedBook, setSelectedBook] = useState<string | null>(null);
   const [loanSearch, setLoanSearch] = useState("");
-  const [drawerBook, setDrawerBook] = useState<{ accessionId: string; title: string; author: string; category: string; status: string; location: string } | null>(null);
+  const [drawerBook, setDrawerBook] = useState<{ accessionId: string; title: string; author: string; genre: string; status: string; location: string } | null>(null);
 
   const canIssue = selectedMember && selectedBook;
 
@@ -122,7 +122,7 @@ export default function Lending() {
                         accessionId: l.accessionId,
                         title: l.book,
                         author: "",
-                        category: "",
+                        genre: "",
                         status: l.status,
                         location: "",
                       }),
@@ -224,7 +224,7 @@ export default function Lending() {
             accessionId: l.accessionId,
             title: l.book,
             author: "",
-            category: "",
+            genre: "",
             status: l.status,
             location: "",
           })
