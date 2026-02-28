@@ -89,23 +89,34 @@ export function BookDetailDrawer({ book, open, onClose }: BookDetailDrawerProps)
 
           {/* Metadata */}
           <div className="space-y-2 text-[13px]">
-            {[
+            {([
               isFullBook ? ["Book ID", book.id] : ("accessionId" in book && book.accessionId ? ["Accession ID", book.accessionId] : null),
+              isFullBook && book.titleBangla ? ["Title (Bangla)", book.titleBangla] : null,
               ["Author", book.author],
+              isFullBook && book.authorBangla ? ["Author (Bangla)", book.authorBangla] : null,
               ["Genre", book.genre],
-              ...(isFullBook ? [["Language", book.language]] : []),
-              ...(isFullBook ? [["ISBN", book.isbn || "—"]] : []),
-              ["Location", book.location],
+              ...(isFullBook ? [
+                ["Category", book.category],
+                ["Language", book.language],
+                ["ISBN", book.isbn || "—"],
+                ["Publisher", book.publisher || "—"],
+                ["Year", book.yearOfPublication || "—"],
+                ["Edition", book.edition || "—"],
+                ["Condition", book.condition || "—"],
+                book.pages > 0 ? ["Pages", String(book.pages)] : null,
+                book.price > 0 ? ["Price", `৳${book.price}`] : null,
+              ] : []),
+              ...(isFullBook ? [["Location", book.location || "—"]] : [["Location", book.location]]),
               ...(isFullBook ? [
                 ["Added", new Date(book.createdAt).toLocaleDateString()],
                 ["Last Updated", new Date(book.updatedAt).toLocaleDateString()],
               ] : []),
-            ]
+            ] as (string[] | null)[])
               .filter(Boolean)
               .map(([label, val]) => (
                 <div key={label as string} className="flex justify-between py-1 border-b border-border last:border-0">
                   <span className="text-muted-foreground">{label}</span>
-                  <span className="font-medium text-foreground">{val}</span>
+                  <span className="font-medium text-foreground text-right max-w-[200px] truncate">{val}</span>
                 </div>
               ))}
           </div>
