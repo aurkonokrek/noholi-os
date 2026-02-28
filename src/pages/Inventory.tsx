@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Upload, Download, Pencil, Trash2, BookOpen, Eye, Package, AlertTriangle } from "lucide-react";
+import { Plus, Upload, Download, Pencil, Trash2, BookOpen, Eye, Package, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
@@ -10,6 +10,7 @@ import { RowActions } from "@/components/RowActions";
 import { BookDetailDrawer } from "@/components/BookDetailDrawer";
 import { AdjustStockDialog } from "@/components/AdjustStockDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useInventory, deriveStatus, isLowStock, type Book, type BookStatus } from "@/hooks/use-inventory";
 import { useCanWrite, useCanDelete } from "@/lib/roles";
 import { toast } from "sonner";
@@ -21,44 +22,49 @@ const STATUS_VARIANT: Record<BookStatus, BadgeVariant> = {
   "Out of Stock": "destructive",
 };
 
-const GENRES = ["All", "Fiction", "Non-Fiction", "Self-Help", "Memoir", "Poetry", "Science", "History", "Philosophy", "Religion", "Children"] as const;
 const LANGUAGES = ["All", "Bangla", "English"] as const;
 const STATUSES = ["All", "Available", "Unavailable", "Out of Stock"] as const;
 
 export default function Inventory() {
   const canWrite = useCanWrite();
   const canDelete = useCanDelete();
-  const { books, stats, adjustStock, deleteBook } = useInventory();
+  const { books, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook } = useInventory();
 
   const [search, setSearch] = useState("");
   const [genreFilter, setGenreFilter] = useState<string>("All");
+  const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [languageFilter, setLanguageFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [stockBook, setStockBook] = useState<Book | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Book | null>(null);
 
-  const hasFilters = search || genreFilter !== "All" || languageFilter !== "All" || statusFilter !== "All";
+  const hasFilters = search || genreFilter !== "All" || categoryFilter !== "All" || languageFilter !== "All" || statusFilter !== "All";
 
   const resetFilters = () => {
     setSearch("");
     setGenreFilter("All");
+    setCategoryFilter("All");
     setLanguageFilter("All");
     setStatusFilter("All");
   };
 
   const filtered = books.filter((b) => {
+    const q = search.toLowerCase();
     const matchesSearch =
       !search ||
-      b.title.toLowerCase().includes(search.toLowerCase()) ||
-      b.author.toLowerCase().includes(search.toLowerCase()) ||
-      b.id.toLowerCase().includes(search.toLowerCase()) ||
-      b.isbn.toLowerCase().includes(search.toLowerCase());
+      b.title.toLowerCase().includes(q) ||
+      b.titleBangla.toLowerCase().includes(q) ||
+      b.author.toLowerCase().includes(q) ||
+      b.authorBangla.toLowerCase().includes(q) ||
+      b.id.toLowerCase().includes(q) ||
+      b.isbn.toLowerCase().includes(q);
     const matchesGenre = genreFilter === "All" || b.genre === genreFilter;
+    const matchesCategory = categoryFilter === "All" || b.category === categoryFilter;
     const matchesLanguage = languageFilter === "All" || b.language === languageFilter;
     const status = deriveStatus(b);
     const matchesStatus = statusFilter === "All" || status === statusFilter;
-    return matchesSearch && matchesGenre && matchesLanguage && matchesStatus;
+    return matchesSearch && matchesGenre && matchesCategory && matchesLanguage && matchesStatus;
   });
 
   const handleAdjustStock = (bookId: string, newTotal: number) => {
@@ -97,10 +103,11 @@ export default function Inventory() {
         </div>
       ),
     },
-    { key: "title", label: "Title", className: "font-medium text-foreground", render: (b) => b.title },
-    { key: "author", label: "Author", className: "text-muted-foreground", render: (b) => b.author },
-    { key: "genre", label: "Genre", className: "text-muted-foreground", render: (b) => b.genre },
+    { key: "title", label: "Title", className: "font-medium text-foreground max-w-[200px] truncate", render: (b) => b.title },
+    { key: "author", label: "Author", className: "text-muted-foreground max-w-[150px] truncate", render: (b) => b.author },
+    { key: "genre", label: "Genre", className: "text-muted-foreground max-w-[120px] truncate", render: (b) => b.genre },
     { key: "language", label: "Language", className: "text-muted-foreground", render: (b) => b.language },
+    { key: "category", label: "Category", className: "text-muted-foreground max-w-[120px] truncate", render: (b) => b.category },
     {
       key: "total",
       label: "Total",
@@ -174,6 +181,15 @@ export default function Inventory() {
       : []),
   ];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 gap-2 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-[13px]">Loading inventory…</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <PageHeader
@@ -218,11 +234,31 @@ export default function Inventory() {
           placeholder="Search by title, author, ISBN, or ID..."
           className="flex-1 min-w-[200px] max-w-xs"
         />
-        <FilterChips
-          options={[...GENRES]}
-          value={genreFilter as typeof GENRES[number]}
-          onChange={setGenreFilter}
-        />
+
+        {/* Genre dropdown (many unique values) */}
+        <Select value={genreFilter} onValueChange={setGenreFilter}>
+          <SelectTrigger className="w-[180px] h-8 text-[12px]">
+            <SelectValue placeholder="Genre" />
+          </SelectTrigger>
+          <SelectContent>
+            {uniqueGenres.map((g) => (
+              <SelectItem key={g} value={g} className="text-[12px]">{g}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Category dropdown (many unique values) */}
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[180px] h-8 text-[12px]">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            {uniqueCategories.map((c) => (
+              <SelectItem key={c} value={c} className="text-[12px]">{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <FilterChips
           options={[...LANGUAGES]}
           value={languageFilter as typeof LANGUAGES[number]}
@@ -239,6 +275,10 @@ export default function Inventory() {
             Reset
           </button>
         )}
+      </div>
+
+      <div className="text-[12px] text-muted-foreground">
+        Showing {filtered.length} of {books.length} books
       </div>
 
       <DataTable
