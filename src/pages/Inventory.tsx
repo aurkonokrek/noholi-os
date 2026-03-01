@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Plus, Upload, Download, Pencil, Trash2, BookOpen, Eye, Package, AlertTriangle, Loader2 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
@@ -38,6 +39,35 @@ export default function Inventory() {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [stockBook, setStockBook] = useState<Book | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Book | null>(null);
+
+  const exportBooks = useCallback(() => {
+    const exportData = books.map((b) => ({
+      "Book ID": b.id,
+      "Title (English)": b.title,
+      "Title (Bangla)": b.titleBangla,
+      "Author (English)": b.author,
+      "Author (Bangla)": b.authorBangla,
+      "Genre": b.genre,
+      "Category": b.category,
+      "Language": b.language,
+      "ISBN": b.isbn,
+      "Publisher": b.publisher,
+      "Year of Publication": b.yearOfPublication,
+      "Edition": b.edition,
+      "Condition": b.condition,
+      "Pages": b.pages,
+      "Price (৳)": b.price,
+      "Total Copies": b.totalCopies,
+      "Available Copies": b.availableCopies,
+      "Issued Copies": b.issuedCopies,
+      "Reserved Copies": b.reservedCopies,
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Books");
+    XLSX.writeFile(wb, `Inventory_Export_${books.length}_records.xlsx`);
+    toast.success(`Exported ${books.length} records`);
+  }, [books]);
 
   const hasFilters = search || genreFilter !== "All" || categoryFilter !== "All" || languageFilter !== "All" || statusFilter !== "All";
 
@@ -201,7 +231,7 @@ export default function Inventory() {
               <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8">
                 <Upload className="h-3.5 w-3.5" /> Upload Excel
               </Button>
-              <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8">
+              <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8" onClick={exportBooks}>
                 <Download className="h-3.5 w-3.5" /> Export
               </Button>
               <Button size="sm" className="gap-1.5 text-[13px] h-8">
@@ -209,7 +239,7 @@ export default function Inventory() {
               </Button>
             </>
           ) : (
-            <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8">
+            <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8" onClick={exportBooks}>
               <Download className="h-3.5 w-3.5" /> Export
             </Button>
           )
