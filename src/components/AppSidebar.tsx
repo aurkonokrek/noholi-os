@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { NAV_ITEMS, type UserRole } from "@/lib/navigation";
+import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard,
   BookOpen,
@@ -12,6 +13,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  LogOut,
 } from "lucide-react";
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -32,6 +34,7 @@ interface AppSidebarProps {
 export function AppSidebar({ role }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const { signOut } = useAuth();
 
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
 
@@ -82,10 +85,18 @@ export function AppSidebar({ role }: AppSidebarProps) {
         })}
       </nav>
 
-      {/* Role indicator */}
-      <div className="px-3 py-3 border-t border-sidebar-border">
+      {/* Logout & role */}
+      <div className="px-2 py-2 border-t border-sidebar-border space-y-1">
+        <button
+          onClick={() => signOut()}
+          className="flex items-center gap-2.5 px-2.5 py-2 text-[13px] rounded transition-colors w-full text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          title={collapsed ? "Sign out" : undefined}
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>Sign Out</span>}
+        </button>
         {!collapsed && (
-          <span className="text-[11px] uppercase tracking-wider text-sidebar-muted">
+          <span className="block px-2.5 text-[11px] uppercase tracking-wider text-sidebar-muted">
             {role}
           </span>
         )}
