@@ -1,15 +1,14 @@
-import { BookOpen, ArrowLeftRight, AlertTriangle, Users, Gift, Clock, BadgeDollarSign, Package, FileCheck } from "lucide-react";
-import { StatusBadge } from "@/components/StatusBadge";
-import { DataTable, type Column } from "@/components/DataTable";
+import { BookOpen, ArrowLeftRight, AlertTriangle, Users, Gift, Clock, BadgeDollarSign, Package, FileCheck, Loader2 } from "lucide-react";
+import { useDashboardStats } from "@/hooks/use-dashboard-stats";
 
 interface StatCardProps {
   label: string;
   value: string | number;
   icon: React.ElementType;
-  trend?: string;
+  subtitle?: string;
 }
 
-function StatCard({ label, value, icon: Icon, trend }: StatCardProps) {
+function StatCard({ label, value, icon: Icon, subtitle }: StatCardProps) {
   return (
     <div className="bg-card border border-border rounded p-3 flex items-start gap-2.5">
       <div className="p-1.5 bg-secondary rounded">
@@ -22,62 +21,37 @@ function StatCard({ label, value, icon: Icon, trend }: StatCardProps) {
         <p className="text-lg font-semibold text-foreground leading-tight mt-0.5">
           {value}
         </p>
-        {trend && (
-          <p className="text-[11px] text-muted-foreground">{trend}</p>
+        {subtitle && (
+          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
         )}
       </div>
     </div>
   );
 }
 
-/* Attention Required */
-const ALERTS = [
-  { label: "Overdue books", value: 47, icon: Clock, variant: "destructive" as const },
-  { label: "Pending fines", value: 12, icon: BadgeDollarSign, variant: "warning" as const },
-  { label: "Low stock categories", value: 3, icon: Package, variant: "warning" as const },
-  { label: "Donation approvals", value: 5, icon: FileCheck, variant: "accent" as const },
-];
-
-/* Recent Activity */
-interface Activity {
-  book: string;
-  member: string;
-  action: string;
-  date: string;
-  status: string;
+function formatNum(n: number) {
+  return n.toLocaleString("en-BD");
 }
 
-const ACTIVITY_DATA: Activity[] = [
-  { book: "The Great Gatsby", member: "Alice Mwangi", action: "Issued", date: "2026-02-13", status: "Active" },
-  { book: "Things Fall Apart", member: "James Oloo", action: "Returned", date: "2026-02-13", status: "Completed" },
-  { book: "Sapiens", member: "—", action: "Donated", date: "2026-02-12", status: "Processed" },
-  { book: "1984", member: "Sarah Njoki", action: "Issued", date: "2026-02-12", status: "Active" },
-  { book: "Beloved", member: "Peter Kamau", action: "Returned", date: "2026-02-11", status: "Overdue" },
-  { book: "Half of a Yellow Sun", member: "Grace Wambui", action: "Issued", date: "2026-02-11", status: "Active" },
-  { book: "Americanah", member: "Daniel Kipchoge", action: "Returned", date: "2026-02-10", status: "Completed" },
-  { book: "Weep Not, Child", member: "Faith Achieng", action: "Donated", date: "2026-02-10", status: "Processed" },
-];
-
-const STATUS_VARIANT: Record<string, "success" | "accent" | "muted" | "destructive"> = {
-  Active: "accent",
-  Completed: "success",
-  Processed: "muted",
-  Overdue: "destructive",
-};
-
-const activityColumns: Column<Activity>[] = [
-  { key: "book", label: "Book", className: "font-medium text-foreground", render: (r) => r.book },
-  { key: "member", label: "Member", className: "text-muted-foreground", render: (r) => r.member },
-  { key: "action", label: "Action", render: (r) => r.action },
-  { key: "date", label: "Date", className: "text-muted-foreground", render: (r) => r.date },
-  {
-    key: "status",
-    label: "Status",
-    render: (r) => <StatusBadge variant={STATUS_VARIANT[r.status] ?? "muted"}>{r.status}</StatusBadge>,
-  },
-];
-
 export default function Dashboard() {
+  const { stats, loading } = useDashboardStats();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 gap-2 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-[13px]">Loading dashboard…</span>
+      </div>
+    );
+  }
+
+  const alerts = [
+    { label: "Overdue books", value: stats.overdueToday, icon: Clock, show: true },
+    { label: "Pending fines", value: stats.pendingFines, icon: BadgeDollarSign, show: true },
+    { label: "Low stock titles", value: stats.lowStockCategories, icon: Package, show: stats.lowStockCategories > 0 },
+    { label: "Donation approvals", value: stats.donationApprovals, icon: FileCheck, show: true },
+  ];
+
   return (
     <div className="space-y-3">
       {/* Header */}
@@ -87,19 +61,20 @@ export default function Dashboard() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
-        <StatCard label="Total Books" value="12,847" icon={BookOpen} trend="+34 this week" />
-        <StatCard label="Books on Loan" value="1,203" icon={ArrowLeftRight} />
-        <StatCard label="Overdue Today" value="47" icon={AlertTriangle} />
-        <StatCard label="Active Members" value="3,891" icon={Users} trend="+12 new" />
-        <StatCard label="Donations (Month)" value="89" icon={Gift} />
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-2">
+        <StatCard label="Total Books" value={formatNum(stats.totalBooks)} icon={BookOpen} subtitle={`${formatNum(stats.totalCopies)} copies`} />
+        <StatCard label="Books on Loan" value={formatNum(stats.booksOnLoan)} icon={ArrowLeftRight} />
+        <StatCard label="Overdue Today" value={formatNum(stats.overdueToday)} icon={AlertTriangle} />
+        <StatCard label="Active Members" value={formatNum(stats.activeMembers)} icon={Users} />
+        <StatCard label="Donations (Month)" value={formatNum(stats.donationsThisMonth)} icon={Gift} />
+        <StatCard label="Reserved" value={formatNum(stats.reserved)} icon={BookOpen} />
       </div>
 
       {/* Attention Required */}
       <div className="bg-card border border-border rounded p-3">
         <h2 className="text-[13px] font-semibold text-foreground mb-2">Attention Required</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          {ALERTS.map((a) => (
+          {alerts.filter(a => a.show).map((a) => (
             <div
               key={a.label}
               className="flex items-center gap-2 rounded border border-border p-2 bg-secondary/30"
@@ -107,24 +82,17 @@ export default function Dashboard() {
               <a.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               <div className="min-w-0">
                 <p className="text-[12px] text-muted-foreground leading-tight">{a.label}</p>
-                <p className="text-sm font-semibold text-foreground leading-tight">{a.value}</p>
+                <p className="text-sm font-semibold text-foreground leading-tight">{formatNum(a.value)}</p>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Recent Activity Table */}
-      <div>
-        <div className="px-1 mb-1">
-          <h2 className="text-[13px] font-semibold text-foreground">Recent Activity</h2>
-        </div>
-        <DataTable
-          columns={activityColumns}
-          data={ACTIVITY_DATA}
-          keyExtractor={(_, i) => String(i)}
-          compact
-        />
+      {/* Placeholder for recent activity — will be dynamic once lending is connected */}
+      <div className="bg-card border border-border rounded p-3">
+        <h2 className="text-[13px] font-semibold text-foreground mb-1">Recent Activity</h2>
+        <p className="text-[12px] text-muted-foreground">Activity feed will populate once lending and donations modules are connected to a live database.</p>
       </div>
     </div>
   );
