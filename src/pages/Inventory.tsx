@@ -381,11 +381,15 @@ export default function Inventory() {
         book={selectedBook}
         open={!!selectedBook}
         onClose={() => setSelectedBook(null)}
-        onUploadCover={(id, dataUrl) => {
-          updateCover(id, dataUrl);
-          if (selectedBook && selectedBook.id === id) {
-            setSelectedBook({ ...selectedBook, thumbnail: dataUrl });
+        onUploadCover={async (id, file) => {
+          const url = await uploadCover(id, file);
+          if (url) {
+            updateCover(id, url);
+            if (selectedBook && selectedBook.id === id) {
+              setSelectedBook({ ...selectedBook, thumbnail: url });
+            }
           }
+          return url;
         }}
       />
 
