@@ -164,7 +164,7 @@ export default function MembersPage() {
         subtitle={`${members.length} registered members`}
         actions={
           canWrite ? (
-            <Button size="sm" className="gap-1.5 text-[13px] h-8">
+            <Button size="sm" className="gap-1.5 text-[13px] h-8" onClick={() => setShowAddMember(true)}>
               <Plus className="h-3.5 w-3.5" /> Add Member
             </Button>
           ) : undefined
