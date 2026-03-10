@@ -279,13 +279,14 @@ export default function Inventory() {
         actions={
           canWrite ? (
             <>
-              <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8">
+              <input ref={excelUploadRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelUpload} />
+              <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8" onClick={() => excelUploadRef.current?.click()}>
                 <Upload className="h-3.5 w-3.5" /> Upload Excel
               </Button>
               <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8" onClick={exportBooks}>
                 <Download className="h-3.5 w-3.5" /> Export
               </Button>
-              <Button size="sm" className="gap-1.5 text-[13px] h-8">
+              <Button size="sm" className="gap-1.5 text-[13px] h-8" onClick={() => setShowAddBook(true)}>
                 <Plus className="h-3.5 w-3.5" /> Add Book
               </Button>
             </>
