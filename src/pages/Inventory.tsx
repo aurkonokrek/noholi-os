@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { AddBookDialog } from "@/components/AddBookDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useInventory, deriveStatus, isLowStock, type Book, type BookStatus } from "@/hooks/use-inventory";
+import { useBookCovers } from "@/hooks/use-book-covers";
 import { useCanWrite, useCanDelete } from "@/lib/roles";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -30,7 +31,11 @@ const STATUSES = ["All", "Available", "Unavailable", "Out of Stock"] as const;
 export default function Inventory() {
   const canWrite = useCanWrite();
   const canDelete = useCanDelete();
-  const { books, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook, addBook, addBooks, updateCover } = useInventory();
+  const { books: rawBooks, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook, addBook, addBooks, updateCover } = useInventory();
+  const { coverMap, uploadCover } = useBookCovers();
+
+  // Merge persistent covers into books
+  const books = rawBooks.map((b) => coverMap[b.id] ? { ...b, thumbnail: coverMap[b.id] } : b);
 
   const excelUploadRef = useRef<HTMLInputElement>(null);
 
@@ -376,11 +381,15 @@ export default function Inventory() {
         book={selectedBook}
         open={!!selectedBook}
         onClose={() => setSelectedBook(null)}
-        onUploadCover={(id, dataUrl) => {
-          updateCover(id, dataUrl);
-          if (selectedBook && selectedBook.id === id) {
-            setSelectedBook({ ...selectedBook, thumbnail: dataUrl });
+        onUploadCover={async (id, file) => {
+          const url = await uploadCover(id, file);
+          if (url) {
+            updateCover(id, url);
+            if (selectedBook && selectedBook.id === id) {
+              setSelectedBook({ ...selectedBook, thumbnail: url });
+            }
           }
+          return url;
         }}
       />
 

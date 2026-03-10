@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { BookOpen, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+import { BookOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
 import { deriveStatus, type Book as InventoryBook, type BookStatus } from "@/hooks/use-inventory";
@@ -36,22 +36,25 @@ interface BookDetailDrawerProps {
   book: BookLike | null;
   open: boolean;
   onClose: () => void;
-  onUploadCover?: (bookId: string, dataUrl: string) => void;
+  onUploadCover?: (bookId: string, file: File) => Promise<string | null>;
 }
 
 export function BookDetailDrawer({ book, open, onClose, onUploadCover }: BookDetailDrawerProps) {
   const coverRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
   if (!book) return null;
 
-  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !isInventoryBook(book) || !onUploadCover) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      onUploadCover(book.id, reader.result as string);
-      toast.success("Cover image updated");
-    };
-    reader.readAsDataURL(file);
+    setUploading(true);
+    const url = await onUploadCover(book.id, file);
+    setUploading(false);
+    if (url) {
+      toast.success("Cover image saved permanently");
+    } else {
+      toast.error("Failed to upload cover image");
+    }
   };
 
   const isFullBook = isInventoryBook(book);
@@ -81,9 +84,10 @@ export function BookDetailDrawer({ book, open, onClose, onUploadCover }: BookDet
             size="sm"
             className="w-full gap-1.5 text-[13px]"
             onClick={() => coverRef.current?.click()}
-            disabled={!isInventoryBook(book) || !onUploadCover}
+            disabled={!isInventoryBook(book) || !onUploadCover || uploading}
           >
-            <Upload className="h-3.5 w-3.5" /> Upload Cover
+            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            {uploading ? "Uploading…" : "Upload Cover"}
           </Button>
 
           {/* Status */}
