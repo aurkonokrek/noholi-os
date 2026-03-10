@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Plus, Upload, Download, Pencil, Trash2, BookOpen, Eye, Package, AlertTriangle, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { RowActions } from "@/components/RowActions";
 import { BookDetailDrawer } from "@/components/BookDetailDrawer";
 import { AdjustStockDialog } from "@/components/AdjustStockDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { AddBookDialog } from "@/components/AddBookDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useInventory, deriveStatus, isLowStock, type Book, type BookStatus } from "@/hooks/use-inventory";
 import { useCanWrite, useCanDelete } from "@/lib/roles";
@@ -29,7 +30,9 @@ const STATUSES = ["All", "Available", "Unavailable", "Out of Stock"] as const;
 export default function Inventory() {
   const canWrite = useCanWrite();
   const canDelete = useCanDelete();
-  const { books, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook } = useInventory();
+  const { books, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook, addBook, addBooks, updateCover } = useInventory();
+
+  const excelUploadRef = useRef<HTMLInputElement>(null);
 
   const [search, setSearch] = useState("");
   const [genreFilter, setGenreFilter] = useState<string>("All");
@@ -39,6 +42,7 @@ export default function Inventory() {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [stockBook, setStockBook] = useState<Book | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Book | null>(null);
+  const [showAddBook, setShowAddBook] = useState(false);
 
   const exportBooks = useCallback(() => {
     const exportData = books.map((b) => ({
@@ -68,6 +72,53 @@ export default function Inventory() {
     XLSX.writeFile(wb, `Inventory_Export_${books.length}_records.xlsx`);
     toast.success(`Exported ${books.length} records`);
   }, [books]);
+
+  const handleExcelUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const buf = evt.target?.result;
+        const wb = XLSX.read(buf, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
+        const newBooks = rows.map((row) => ({
+          title: String(row["Book Title (English)"] ?? row["Title"] ?? "Untitled").trim(),
+          titleBangla: String(row["Book Title (Bangla)"] ?? "").trim(),
+          author: String(row["Author Name (English)"] ?? row["Author"] ?? "Unknown").trim(),
+          authorBangla: String(row["Author Name (Bangla)"] ?? "").trim(),
+          genre: String(row["Genre"] ?? "Uncategorized").trim(),
+          category: String(row["Category"] ?? "General").trim(),
+          language: (String(row["Language"] ?? "Bangla").trim() === "English" ? "English" : "Bangla") as "Bangla" | "English",
+          isbn: String(row["ISBN"] ?? "").trim(),
+          publisher: String(row["Publications"] ?? row["Publisher"] ?? "").trim(),
+          yearOfPublication: String(row["Year of Publication"] ?? "").trim(),
+          edition: String(row["Edition"] ?? "").trim(),
+          condition: String(row["Book Condition"] ?? row["Condition"] ?? "").trim(),
+          pages: Number(row["Pages"]) || 0,
+          price: Number(row["৳ Price"] ?? row["Price"]) || 0,
+          totalCopies: Number(row["Total Copies"]) || 1,
+          availableCopies: Number(row["Total Copies"]) || 1,
+          issuedCopies: 0,
+          reservedCopies: 0,
+          location: String(row["Location"] ?? "").trim(),
+          thumbnail: undefined,
+        }));
+        const count = addBooks(newBooks);
+        toast.success(`Imported ${count} books from Excel`);
+      } catch (err) {
+        toast.error("Failed to parse Excel file");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  }, [addBooks]);
+
+  const handleAddBook = useCallback((book: Omit<Book, "id" | "createdAt" | "updatedAt">) => {
+    const id = addBook(book);
+    toast.success(`"${book.title}" added as ${id}`);
+  }, [addBook]);
 
   const hasFilters = search || genreFilter !== "All" || categoryFilter !== "All" || languageFilter !== "All" || statusFilter !== "All";
 
@@ -228,13 +279,14 @@ export default function Inventory() {
         actions={
           canWrite ? (
             <>
-              <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8">
+              <input ref={excelUploadRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelUpload} />
+              <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8" onClick={() => excelUploadRef.current?.click()}>
                 <Upload className="h-3.5 w-3.5" /> Upload Excel
               </Button>
               <Button size="sm" variant="outline" className="gap-1.5 text-[13px] h-8" onClick={exportBooks}>
                 <Download className="h-3.5 w-3.5" /> Export
               </Button>
-              <Button size="sm" className="gap-1.5 text-[13px] h-8">
+              <Button size="sm" className="gap-1.5 text-[13px] h-8" onClick={() => setShowAddBook(true)}>
                 <Plus className="h-3.5 w-3.5" /> Add Book
               </Button>
             </>
@@ -324,6 +376,12 @@ export default function Inventory() {
         book={selectedBook}
         open={!!selectedBook}
         onClose={() => setSelectedBook(null)}
+        onUploadCover={(id, dataUrl) => {
+          updateCover(id, dataUrl);
+          if (selectedBook && selectedBook.id === id) {
+            setSelectedBook({ ...selectedBook, thumbnail: dataUrl });
+          }
+        }}
       />
 
       <AdjustStockDialog
@@ -341,6 +399,12 @@ export default function Inventory() {
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={handleDelete}
+      />
+
+      <AddBookDialog
+        open={showAddBook}
+        onClose={() => setShowAddBook(false)}
+        onAdd={handleAddBook}
       />
     </div>
   );

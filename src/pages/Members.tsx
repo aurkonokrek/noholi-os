@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Eye, Archive, User, UserX, UserCheck } from "lucide-react";
+import { AddMemberDialog } from "@/components/AddMemberDialog";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
@@ -51,6 +52,7 @@ export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>(MEMBERS_DATA);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [showAddMember, setShowAddMember] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{
     memberId: string;
     memberName: string;
@@ -162,7 +164,7 @@ export default function MembersPage() {
         subtitle={`${members.length} registered members`}
         actions={
           canWrite ? (
-            <Button size="sm" className="gap-1.5 text-[13px] h-8">
+            <Button size="sm" className="gap-1.5 text-[13px] h-8" onClick={() => setShowAddMember(true)}>
               <Plus className="h-3.5 w-3.5" /> Add Member
             </Button>
           ) : undefined
@@ -211,6 +213,19 @@ export default function MembersPage() {
         confirmLabel={confirmAction?.action === "suspend" ? "Suspend" : "Reactivate"}
         variant={confirmAction?.action === "suspend" ? "destructive" : "default"}
         onConfirm={handleStatusChange}
+      />
+
+      <AddMemberDialog
+        open={showAddMember}
+        onClose={() => setShowAddMember(false)}
+        onAdd={(member) => {
+          const id = `MEM-${String(members.length + 1001).padStart(4, "0")}`;
+          setMembers((prev) => [
+            { memberId: id, name: member.name, email: member.email, phone: member.phone, activeLoans: 0, fines: 0, status: "Active" },
+            ...prev,
+          ]);
+          toast({ title: "Member added", description: `${member.name} (${id})` });
+        }}
       />
     </div>
   );

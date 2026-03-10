@@ -39,10 +39,32 @@ export default function Lending() {
   const [bookSearch, setBookSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [selectedBook, setSelectedBook] = useState<string | null>(null);
+  const [dueDate, setDueDate] = useState("2026-02-27");
   const [loanSearch, setLoanSearch] = useState("");
   const [drawerBook, setDrawerBook] = useState<{ accessionId: string; title: string; author: string; genre: string; status: string; location: string } | null>(null);
 
   const canIssue = selectedMember && selectedBook;
+
+  const handleConfirmIssue = () => {
+    if (!selectedMember || !selectedBook) return;
+    const id = `LN-${String(loans.length + 407).padStart(4, "0")}`;
+    const newLoan: ActiveLoan = {
+      id,
+      member: memberSearch,
+      memberId: selectedMember,
+      book: bookSearch,
+      accessionId: `ACC-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+      issuedDate: new Date().toISOString().split("T")[0],
+      dueDate,
+      status: "Active",
+    };
+    setLoans((prev) => [newLoan, ...prev]);
+    toast({ title: "Book issued", description: `${bookSearch} issued to ${memberSearch}` });
+    setMemberSearch("");
+    setBookSearch("");
+    setSelectedMember(null);
+    setSelectedBook(null);
+  };
 
   const returnBook = (id: string) => {
     const loan = loans.find((l) => l.id === id);
@@ -190,12 +212,12 @@ export default function Lending() {
               <label className="text-[12px] font-medium text-muted-foreground">Due Date</label>
               <div className="relative">
                 <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input type="date" defaultValue="2026-02-27" className="pl-8 h-8 text-[13px]" />
+                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="pl-8 h-8 text-[13px]" />
               </div>
             </div>
             <div className="space-y-1">
               <label className="text-[12px] font-medium text-muted-foreground">&nbsp;</label>
-              <Button size="sm" className="w-full h-8 text-[13px]" disabled={!canIssue}>
+              <Button size="sm" className="w-full h-8 text-[13px]" disabled={!canIssue} onClick={handleConfirmIssue}>
                 Confirm Issue
               </Button>
             </div>

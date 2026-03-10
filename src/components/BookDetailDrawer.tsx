@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { BookOpen, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
@@ -8,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { toast } from "sonner";
 
 const STATUS_VARIANT: Record<BookStatus, BadgeVariant> = {
   Available: "success",
@@ -34,10 +36,23 @@ interface BookDetailDrawerProps {
   book: BookLike | null;
   open: boolean;
   onClose: () => void;
+  onUploadCover?: (bookId: string, dataUrl: string) => void;
 }
 
-export function BookDetailDrawer({ book, open, onClose }: BookDetailDrawerProps) {
+export function BookDetailDrawer({ book, open, onClose, onUploadCover }: BookDetailDrawerProps) {
+  const coverRef = useRef<HTMLInputElement>(null);
   if (!book) return null;
+
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !isInventoryBook(book) || !onUploadCover) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      onUploadCover(book.id, reader.result as string);
+      toast.success("Cover image updated");
+    };
+    reader.readAsDataURL(file);
+  };
 
   const isFullBook = isInventoryBook(book);
   const status = isFullBook ? deriveStatus(book) : book.status;
@@ -60,7 +75,14 @@ export function BookDetailDrawer({ book, open, onClose }: BookDetailDrawerProps)
               <BookOpen className="h-12 w-12 text-muted-foreground/40" />
             )}
           </div>
-          <Button variant="outline" size="sm" className="w-full gap-1.5 text-[13px]">
+          <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full gap-1.5 text-[13px]"
+            onClick={() => coverRef.current?.click()}
+            disabled={!isInventoryBook(book) || !onUploadCover}
+          >
             <Upload className="h-3.5 w-3.5" /> Upload Cover
           </Button>
 
