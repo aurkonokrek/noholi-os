@@ -153,8 +153,8 @@ export default function Inventory() {
     return matchesSearch && matchesGenre && matchesCategory && matchesLanguage && matchesStatus;
   });
 
-  const handleAdjustStock = (bookId: string, newTotal: number) => {
-    const result = adjustStock(bookId, newTotal);
+  const handleAdjustStock = async (bookId: string, newTotal: number) => {
+    const result = await adjustStock(bookId, newTotal);
     if (result.success) {
       toast.success("Stock updated successfully");
       return { success: true } as { success: boolean; error?: string };
@@ -163,9 +163,9 @@ export default function Inventory() {
     return { success: false, error: result.error };
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    const result = deleteBook(deleteTarget.id);
+    const result = await deleteBook(deleteTarget.id);
     if (result.success) {
       toast.success(`"${deleteTarget.title}" deleted`);
     } else {
