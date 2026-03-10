@@ -376,6 +376,12 @@ export default function Inventory() {
         book={selectedBook}
         open={!!selectedBook}
         onClose={() => setSelectedBook(null)}
+        onUploadCover={(id, dataUrl) => {
+          updateCover(id, dataUrl);
+          if (selectedBook && selectedBook.id === id) {
+            setSelectedBook({ ...selectedBook, thumbnail: dataUrl });
+          }
+        }}
       />
 
       <AdjustStockDialog
