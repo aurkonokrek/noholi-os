@@ -198,5 +198,5 @@ export function useInventory() {
     lowStock: books.filter(isLowStock).length,
   }), [books]);
 
-  return { books, loading, stats, uniqueGenres, uniqueCategories, reserve, issue, returnBook, cancelReservation, adjustStock, deleteBook };
+  return { books, loading, stats, uniqueGenres, uniqueCategories, reserve, issue, returnBook, cancelReservation, adjustStock, deleteBook, addBook, addBooks, updateCover };
 }
