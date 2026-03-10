@@ -30,7 +30,9 @@ const STATUSES = ["All", "Available", "Unavailable", "Out of Stock"] as const;
 export default function Inventory() {
   const canWrite = useCanWrite();
   const canDelete = useCanDelete();
-  const { books, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook } = useInventory();
+  const { books, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook, addBook, addBooks, updateCover } = useInventory();
+
+  const excelUploadRef = useRef<HTMLInputElement>(null);
 
   const [search, setSearch] = useState("");
   const [genreFilter, setGenreFilter] = useState<string>("All");
