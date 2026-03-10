@@ -56,6 +56,9 @@ export default function DonationsPage() {
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [donorName, setDonorName] = useState("");
+  const [bookTitle, setBookTitle] = useState("");
+  const [condition, setCondition] = useState<Donation["condition"]>("New");
 
   const hasFilters = search || statusFilter !== "All";
 
