@@ -75,7 +75,14 @@ export function BookDetailDrawer({ book, open, onClose, onUploadCover }: BookDet
               <BookOpen className="h-12 w-12 text-muted-foreground/40" />
             )}
           </div>
-          <Button variant="outline" size="sm" className="w-full gap-1.5 text-[13px]">
+          <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full gap-1.5 text-[13px]"
+            onClick={() => coverRef.current?.click()}
+            disabled={!isInventoryBook(book) || !onUploadCover}
+          >
             <Upload className="h-3.5 w-3.5" /> Upload Cover
           </Button>
 
