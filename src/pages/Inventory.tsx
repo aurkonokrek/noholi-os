@@ -73,6 +73,53 @@ export default function Inventory() {
     toast.success(`Exported ${books.length} records`);
   }, [books]);
 
+  const handleExcelUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const buf = evt.target?.result;
+        const wb = XLSX.read(buf, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
+        const newBooks = rows.map((row) => ({
+          title: String(row["Book Title (English)"] ?? row["Title"] ?? "Untitled").trim(),
+          titleBangla: String(row["Book Title (Bangla)"] ?? "").trim(),
+          author: String(row["Author Name (English)"] ?? row["Author"] ?? "Unknown").trim(),
+          authorBangla: String(row["Author Name (Bangla)"] ?? "").trim(),
+          genre: String(row["Genre"] ?? "Uncategorized").trim(),
+          category: String(row["Category"] ?? "General").trim(),
+          language: (String(row["Language"] ?? "Bangla").trim() === "English" ? "English" : "Bangla") as "Bangla" | "English",
+          isbn: String(row["ISBN"] ?? "").trim(),
+          publisher: String(row["Publications"] ?? row["Publisher"] ?? "").trim(),
+          yearOfPublication: String(row["Year of Publication"] ?? "").trim(),
+          edition: String(row["Edition"] ?? "").trim(),
+          condition: String(row["Book Condition"] ?? row["Condition"] ?? "").trim(),
+          pages: Number(row["Pages"]) || 0,
+          price: Number(row["৳ Price"] ?? row["Price"]) || 0,
+          totalCopies: Number(row["Total Copies"]) || 1,
+          availableCopies: Number(row["Total Copies"]) || 1,
+          issuedCopies: 0,
+          reservedCopies: 0,
+          location: String(row["Location"] ?? "").trim(),
+          thumbnail: undefined,
+        }));
+        const count = addBooks(newBooks);
+        toast.success(`Imported ${count} books from Excel`);
+      } catch (err) {
+        toast.error("Failed to parse Excel file");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  }, [addBooks]);
+
+  const handleAddBook = useCallback((book: Omit<Book, "id" | "createdAt" | "updatedAt">) => {
+    const id = addBook(book);
+    toast.success(`"${book.title}" added as ${id}`);
+  }, [addBook]);
+
   const hasFilters = search || genreFilter !== "All" || categoryFilter !== "All" || languageFilter !== "All" || statusFilter !== "All";
 
   const resetFilters = () => {
