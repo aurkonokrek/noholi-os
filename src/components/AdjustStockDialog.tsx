@@ -43,8 +43,8 @@ export function AdjustStockDialog({ book, open, onClose, onConfirm }: AdjustStoc
     setValue(v);
   };
 
-  const handleConfirm = () => {
-    const result = onConfirm(book.id, value);
+  const handleConfirm = async () => {
+    const result = await onConfirm(book.id, value);
     if (!result.success && result.error) {
       setError(result.error);
       return;
