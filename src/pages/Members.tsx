@@ -52,6 +52,7 @@ export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>(MEMBERS_DATA);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [showAddMember, setShowAddMember] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{
     memberId: string;
     memberName: string;
