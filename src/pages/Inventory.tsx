@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Plus, Upload, Download, Pencil, Trash2, BookOpen, Eye, Package, AlertTriangle, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { RowActions } from "@/components/RowActions";
 import { BookDetailDrawer } from "@/components/BookDetailDrawer";
 import { AdjustStockDialog } from "@/components/AdjustStockDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { AddBookDialog } from "@/components/AddBookDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useInventory, deriveStatus, isLowStock, type Book, type BookStatus } from "@/hooks/use-inventory";
 import { useCanWrite, useCanDelete } from "@/lib/roles";
