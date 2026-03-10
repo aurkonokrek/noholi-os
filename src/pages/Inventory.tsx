@@ -31,7 +31,11 @@ const STATUSES = ["All", "Available", "Unavailable", "Out of Stock"] as const;
 export default function Inventory() {
   const canWrite = useCanWrite();
   const canDelete = useCanDelete();
-  const { books, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook, addBook, addBooks, updateCover } = useInventory();
+  const { books: rawBooks, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook, addBook, addBooks, updateCover } = useInventory();
+  const { coverMap, uploadCover } = useBookCovers();
+
+  // Merge persistent covers into books
+  const books = rawBooks.map((b) => coverMap[b.id] ? { ...b, thumbnail: coverMap[b.id] } : b);
 
   const excelUploadRef = useRef<HTMLInputElement>(null);
 
