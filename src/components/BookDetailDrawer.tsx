@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { BookOpen, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+import { BookOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
 import { deriveStatus, type Book as InventoryBook, type BookStatus } from "@/hooks/use-inventory";
