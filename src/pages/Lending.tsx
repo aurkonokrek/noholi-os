@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, CalendarDays, CheckCircle2, RotateCcw, BookOpen, Eye, MoreVertical, AlertTriangle } from "lucide-react";
+import { Search, CalendarDays, CheckCircle2, RotateCcw, BookOpen, Eye, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
@@ -10,31 +10,12 @@ import { RowActions } from "@/components/RowActions";
 import { BookDetailDrawer } from "@/components/BookDetailDrawer";
 import { useCanWrite } from "@/lib/roles";
 import { useToast } from "@/hooks/use-toast";
-
-interface ActiveLoan {
-  id: string;
-  member: string;
-  memberId: string;
-  book: string;
-  accessionId: string;
-  issuedDate: string;
-  dueDate: string;
-  status: "Active" | "Overdue";
-}
-
-const INITIAL_LOANS: ActiveLoan[] = [
-  { id: "LN-0401", member: "Alice Mwangi", memberId: "MEM-1001", book: "Sapiens", accessionId: "ACC-0002", issuedDate: "2026-01-28", dueDate: "2026-02-11", status: "Overdue" },
-  { id: "LN-0402", member: "Sarah Njoki", memberId: "MEM-1004", book: "1984", accessionId: "ACC-0003", issuedDate: "2026-02-05", dueDate: "2026-02-19", status: "Active" },
-  { id: "LN-0403", member: "Peter Kamau", memberId: "MEM-1005", book: "Beloved", accessionId: "ACC-0005", issuedDate: "2026-02-01", dueDate: "2026-02-15", status: "Active" },
-  { id: "LN-0404", member: "Grace Wambui", memberId: "MEM-1006", book: "Half of a Yellow Sun", accessionId: "ACC-0008", issuedDate: "2026-02-08", dueDate: "2026-02-22", status: "Active" },
-  { id: "LN-0405", member: "Daniel Kipchoge", memberId: "MEM-1007", book: "Atomic Habits", accessionId: "ACC-0007", issuedDate: "2026-01-25", dueDate: "2026-02-08", status: "Overdue" },
-  { id: "LN-0406", member: "Faith Achieng", memberId: "MEM-1008", book: "Thinking, Fast and Slow", accessionId: "ACC-0011", issuedDate: "2026-02-10", dueDate: "2026-02-24", status: "Active" },
-];
+import { useLoans, type ActiveLoan } from "@/hooks/use-loans";
 
 export default function Lending() {
   const canWrite = useCanWrite();
   const { toast } = useToast();
-  const [loans, setLoans] = useState<ActiveLoan[]>(INITIAL_LOANS);
+  const { loans, loading, issueLoan, returnLoan } = useLoans();
   const [memberSearch, setMemberSearch] = useState("");
   const [bookSearch, setBookSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
@@ -45,11 +26,9 @@ export default function Lending() {
 
   const canIssue = selectedMember && selectedBook;
 
-  const handleConfirmIssue = () => {
+  const handleConfirmIssue = async () => {
     if (!selectedMember || !selectedBook) return;
-    const id = `LN-${String(loans.length + 407).padStart(4, "0")}`;
-    const newLoan: ActiveLoan = {
-      id,
+    const id = await issueLoan({
       member: memberSearch,
       memberId: selectedMember,
       book: bookSearch,
@@ -57,8 +36,7 @@ export default function Lending() {
       issuedDate: new Date().toISOString().split("T")[0],
       dueDate,
       status: "Active",
-    };
-    setLoans((prev) => [newLoan, ...prev]);
+    });
     toast({ title: "Book issued", description: `${bookSearch} issued to ${memberSearch}` });
     setMemberSearch("");
     setBookSearch("");
@@ -66,9 +44,8 @@ export default function Lending() {
     setSelectedBook(null);
   };
 
-  const returnBook = (id: string) => {
-    const loan = loans.find((l) => l.id === id);
-    setLoans((prev) => prev.filter((l) => l.id !== id));
+  const handleReturn = async (id: string) => {
+    const loan = await returnLoan(id);
     if (loan) {
       toast({ title: "Book returned", description: `${loan.book} returned by ${loan.member}` });
     }
@@ -135,7 +112,7 @@ export default function Lending() {
             render: (l: ActiveLoan) => (
               <RowActions
                 primary={[
-                  { label: "Return", icon: RotateCcw, onClick: () => returnBook(l.id) },
+                  { label: "Return", icon: RotateCcw, onClick: () => handleReturn(l.id) },
                   {
                     label: "View",
                     icon: Eye,
@@ -159,6 +136,15 @@ export default function Lending() {
         ]
       : []),
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 gap-2 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-[13px]">Loading loans…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">

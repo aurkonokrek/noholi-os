@@ -38,6 +38,192 @@ export type Database = {
         }
         Relationships: []
       }
+      books: {
+        Row: {
+          author: string
+          author_bangla: string
+          available_copies: number
+          category: string
+          condition: string
+          created_at: string
+          edition: string
+          genre: string
+          id: string
+          isbn: string
+          issued_copies: number
+          language: string
+          location: string
+          pages: number
+          price: number
+          publisher: string
+          reserved_copies: number
+          thumbnail: string | null
+          title: string
+          title_bangla: string
+          total_copies: number
+          updated_at: string
+          year_of_publication: string
+        }
+        Insert: {
+          author: string
+          author_bangla?: string
+          available_copies?: number
+          category?: string
+          condition?: string
+          created_at?: string
+          edition?: string
+          genre?: string
+          id: string
+          isbn?: string
+          issued_copies?: number
+          language?: string
+          location?: string
+          pages?: number
+          price?: number
+          publisher?: string
+          reserved_copies?: number
+          thumbnail?: string | null
+          title: string
+          title_bangla?: string
+          total_copies?: number
+          updated_at?: string
+          year_of_publication?: string
+        }
+        Update: {
+          author?: string
+          author_bangla?: string
+          available_copies?: number
+          category?: string
+          condition?: string
+          created_at?: string
+          edition?: string
+          genre?: string
+          id?: string
+          isbn?: string
+          issued_copies?: number
+          language?: string
+          location?: string
+          pages?: number
+          price?: number
+          publisher?: string
+          reserved_copies?: number
+          thumbnail?: string | null
+          title?: string
+          title_bangla?: string
+          total_copies?: number
+          updated_at?: string
+          year_of_publication?: string
+        }
+        Relationships: []
+      }
+      donations: {
+        Row: {
+          assigned_accession_id: string | null
+          book_title: string
+          condition: string
+          created_at: string
+          date_received: string
+          donor_name: string
+          id: string
+          review_status: string
+        }
+        Insert: {
+          assigned_accession_id?: string | null
+          book_title: string
+          condition?: string
+          created_at?: string
+          date_received?: string
+          donor_name: string
+          id: string
+          review_status?: string
+        }
+        Update: {
+          assigned_accession_id?: string | null
+          book_title?: string
+          condition?: string
+          created_at?: string
+          date_received?: string
+          donor_name?: string
+          id?: string
+          review_status?: string
+        }
+        Relationships: []
+      }
+      loans: {
+        Row: {
+          accession_id: string
+          book_title: string
+          created_at: string
+          due_date: string
+          id: string
+          issued_date: string
+          member_id: string
+          member_name: string
+          status: string
+        }
+        Insert: {
+          accession_id: string
+          book_title: string
+          created_at?: string
+          due_date: string
+          id: string
+          issued_date?: string
+          member_id: string
+          member_name: string
+          status?: string
+        }
+        Update: {
+          accession_id?: string
+          book_title?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          issued_date?: string
+          member_id?: string
+          member_name?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      members: {
+        Row: {
+          active_loans: number
+          avatar: string | null
+          created_at: string
+          email: string
+          fines: number
+          id: string
+          name: string
+          phone: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          active_loans?: number
+          avatar?: string | null
+          created_at?: string
+          email: string
+          fines?: number
+          id: string
+          name: string
+          phone?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          active_loans?: number
+          avatar?: string | null
+          created_at?: string
+          email?: string
+          fines?: number
+          id?: string
+          name?: string
+          phone?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
