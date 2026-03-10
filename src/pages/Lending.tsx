@@ -212,12 +212,12 @@ export default function Lending() {
               <label className="text-[12px] font-medium text-muted-foreground">Due Date</label>
               <div className="relative">
                 <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input type="date" defaultValue="2026-02-27" className="pl-8 h-8 text-[13px]" />
+                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="pl-8 h-8 text-[13px]" />
               </div>
             </div>
             <div className="space-y-1">
               <label className="text-[12px] font-medium text-muted-foreground">&nbsp;</label>
-              <Button size="sm" className="w-full h-8 text-[13px]" disabled={!canIssue}>
+              <Button size="sm" className="w-full h-8 text-[13px]" disabled={!canIssue} onClick={handleConfirmIssue}>
                 Confirm Issue
               </Button>
             </div>

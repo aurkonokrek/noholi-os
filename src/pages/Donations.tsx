@@ -175,15 +175,19 @@ export default function DonationsPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <div className="space-y-1">
               <label className="text-[12px] font-medium text-muted-foreground">Donor Name</label>
-              <Input placeholder="Enter donor name" className="h-8 text-[13px]" />
+              <Input placeholder="Enter donor name" className="h-8 text-[13px]" value={donorName} onChange={(e) => setDonorName(e.target.value)} />
             </div>
             <div className="space-y-1">
               <label className="text-[12px] font-medium text-muted-foreground">Book Title</label>
-              <Input placeholder="Enter book title" className="h-8 text-[13px]" />
+              <Input placeholder="Enter book title" className="h-8 text-[13px]" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} />
             </div>
             <div className="space-y-1">
               <label className="text-[12px] font-medium text-muted-foreground">Condition</label>
-              <select className="w-full h-8 rounded border border-input bg-background px-2.5 text-[13px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <select
+                className="w-full h-8 rounded border border-input bg-background px-2.5 text-[13px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={condition}
+                onChange={(e) => setCondition(e.target.value as Donation["condition"])}
+              >
                 <option>New</option>
                 <option>Good</option>
                 <option>Fair</option>
@@ -191,7 +195,32 @@ export default function DonationsPage() {
               </select>
             </div>
             <div className="flex items-end">
-              <Button size="sm" className="h-8 text-[13px]">Save Donation</Button>
+              <Button
+                size="sm"
+                className="h-8 text-[13px]"
+                disabled={!donorName.trim() || !bookTitle.trim()}
+                onClick={() => {
+                  const id = `DON-${String(donations.length + 1).padStart(3, "0")}`;
+                  setDonations((prev) => [
+                    {
+                      id,
+                      donorName: donorName.trim(),
+                      bookTitle: bookTitle.trim(),
+                      condition,
+                      dateReceived: new Date().toISOString().split("T")[0],
+                      reviewStatus: "Pending",
+                    },
+                    ...prev,
+                  ]);
+                  toast({ title: "Donation recorded", description: `${bookTitle} from ${donorName}` });
+                  setDonorName("");
+                  setBookTitle("");
+                  setCondition("New");
+                  setShowForm(false);
+                }}
+              >
+                Save Donation
+              </Button>
             </div>
           </div>
         </div>
