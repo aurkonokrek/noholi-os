@@ -36,7 +36,7 @@ interface BookDetailDrawerProps {
   book: BookLike | null;
   open: boolean;
   onClose: () => void;
-  onUploadCover?: (bookId: string, dataUrl: string) => void;
+  onUploadCover?: (bookId: string, file: File) => Promise<string | null>;
 }
 
 export function BookDetailDrawer({ book, open, onClose, onUploadCover }: BookDetailDrawerProps) {
