@@ -84,9 +84,10 @@ export function BookDetailDrawer({ book, open, onClose, onUploadCover }: BookDet
             size="sm"
             className="w-full gap-1.5 text-[13px]"
             onClick={() => coverRef.current?.click()}
-            disabled={!isInventoryBook(book) || !onUploadCover}
+            disabled={!isInventoryBook(book) || !onUploadCover || uploading}
           >
-            <Upload className="h-3.5 w-3.5" /> Upload Cover
+            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            {uploading ? "Uploading…" : "Upload Cover"}
           </Button>
 
           {/* Status */}
