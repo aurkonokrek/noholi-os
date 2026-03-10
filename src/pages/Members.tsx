@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Eye, Archive, User, UserX, UserCheck } from "lucide-react";
+import { AddMemberDialog } from "@/components/AddMemberDialog";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
