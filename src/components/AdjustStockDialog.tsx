@@ -16,7 +16,7 @@ interface AdjustStockDialogProps {
   book: Book | null;
   open: boolean;
   onClose: () => void;
-  onConfirm: (bookId: string, newTotal: number) => { success: boolean; error?: string };
+  onConfirm: (bookId: string, newTotal: number) => Promise<{ success: boolean; error?: string }> | { success: boolean; error?: string };
 }
 
 export function AdjustStockDialog({ book, open, onClose, onConfirm }: AdjustStockDialogProps) {
