@@ -394,6 +394,12 @@ export default function Inventory() {
         variant="destructive"
         onConfirm={handleDelete}
       />
+
+      <AddBookDialog
+        open={showAddBook}
+        onClose={() => setShowAddBook(false)}
+        onAdd={handleAddBook}
+      />
     </div>
   );
 }
