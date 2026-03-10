@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { BookOpen, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
@@ -8,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { toast } from "sonner";
 
 const STATUS_VARIANT: Record<BookStatus, BadgeVariant> = {
   Available: "success",
@@ -34,6 +36,7 @@ interface BookDetailDrawerProps {
   book: BookLike | null;
   open: boolean;
   onClose: () => void;
+  onUploadCover?: (bookId: string, dataUrl: string) => void;
 }
 
 export function BookDetailDrawer({ book, open, onClose }: BookDetailDrawerProps) {
