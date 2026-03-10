@@ -41,17 +41,20 @@ interface BookDetailDrawerProps {
 
 export function BookDetailDrawer({ book, open, onClose, onUploadCover }: BookDetailDrawerProps) {
   const coverRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
   if (!book) return null;
 
-  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !isInventoryBook(book) || !onUploadCover) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      onUploadCover(book.id, reader.result as string);
-      toast.success("Cover image updated");
-    };
-    reader.readAsDataURL(file);
+    setUploading(true);
+    const url = await onUploadCover(book.id, file);
+    setUploading(false);
+    if (url) {
+      toast.success("Cover image saved permanently");
+    } else {
+      toast.error("Failed to upload cover image");
+    }
   };
 
   const isFullBook = isInventoryBook(book);
