@@ -105,11 +105,21 @@ export function useInventory() {
   useEffect(() => {
     (async () => {
       try {
-        const { data, error } = await supabase.from("books").select("*").order("id");
-        if (error) throw error;
+        // Fetch ALL books (Supabase default limit is 1000)
+        let allRows: any[] = [];
+        let from = 0;
+        const PAGE = 1000;
+        while (true) {
+          const { data, error } = await supabase.from("books").select("*").order("id").range(from, from + PAGE - 1);
+          if (error) throw error;
+          if (!data || data.length === 0) break;
+          allRows = allRows.concat(data);
+          if (data.length < PAGE) break;
+          from += PAGE;
+        }
 
-        if (data && data.length > 0) {
-          setBooks(data.map(dbToBook));
+        if (allRows.length > 0) {
+          setBooks(allRows.map(dbToBook));
         } else {
           // Seed from Excel
           const parsed = await parseBooksExcel("/data/All_Book_List.xlsx");
