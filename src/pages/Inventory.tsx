@@ -42,6 +42,7 @@ export default function Inventory() {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [stockBook, setStockBook] = useState<Book | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Book | null>(null);
+  const [showAddBook, setShowAddBook] = useState(false);
 
   const exportBooks = useCallback(() => {
     const exportData = books.map((b) => ({
