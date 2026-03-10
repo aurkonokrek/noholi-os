@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { AddBookDialog } from "@/components/AddBookDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useInventory, deriveStatus, isLowStock, type Book, type BookStatus } from "@/hooks/use-inventory";
+import { useBookCovers } from "@/hooks/use-book-covers";
 import { useCanWrite, useCanDelete } from "@/lib/roles";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
