@@ -214,6 +214,19 @@ export default function MembersPage() {
         variant={confirmAction?.action === "suspend" ? "destructive" : "default"}
         onConfirm={handleStatusChange}
       />
+
+      <AddMemberDialog
+        open={showAddMember}
+        onClose={() => setShowAddMember(false)}
+        onAdd={(member) => {
+          const id = `MEM-${String(members.length + 1001).padStart(4, "0")}`;
+          setMembers((prev) => [
+            { memberId: id, name: member.name, email: member.email, phone: member.phone, activeLoans: 0, fines: 0, status: "Active" },
+            ...prev,
+          ]);
+          toast({ title: "Member added", description: `${member.name} (${id})` });
+        }}
+      />
     </div>
   );
 }
