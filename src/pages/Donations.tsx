@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X, Check, XCircle, Pencil, Eye, Trash2 } from "lucide-react";
+import { Plus, X, Check, XCircle, Pencil, Eye, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
@@ -10,18 +10,7 @@ import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
 import { RowActions } from "@/components/RowActions";
 import { useCanWrite, useCanDelete } from "@/lib/roles";
 import { useToast } from "@/hooks/use-toast";
-
-type ReviewStatus = "Pending" | "Approved" | "Rejected" | "Added to Inventory";
-
-interface Donation {
-  id: string;
-  donorName: string;
-  bookTitle: string;
-  condition: "New" | "Good" | "Fair" | "Poor";
-  dateReceived: string;
-  reviewStatus: ReviewStatus;
-  assignedAccessionId?: string;
-}
+import { useDonations, type Donation, type ReviewStatus } from "@/hooks/use-donations";
 
 const CONDITION_VARIANT: Record<Donation["condition"], BadgeVariant> = {
   New: "success",
@@ -37,22 +26,13 @@ const STATUS_VARIANT: Record<ReviewStatus, BadgeVariant> = {
   "Added to Inventory": "success",
 };
 
-const INITIAL_DONATIONS: Donation[] = [
-  { id: "DON-001", donorName: "Nairobi Book Club", bookTitle: "Sapiens", condition: "Good", dateReceived: "2026-02-12", reviewStatus: "Pending" },
-  { id: "DON-002", donorName: "Mary Wanjiku", bookTitle: "Educated", condition: "New", dateReceived: "2026-02-10", reviewStatus: "Pending" },
-  { id: "DON-003", donorName: "KCB Foundation", bookTitle: "The Art of War", condition: "Fair", dateReceived: "2026-02-08", reviewStatus: "Approved", assignedAccessionId: "ACC-0015" },
-  { id: "DON-004", donorName: "Anonymous", bookTitle: "To Kill a Mockingbird", condition: "Good", dateReceived: "2026-02-05", reviewStatus: "Added to Inventory", assignedAccessionId: "ACC-0016" },
-  { id: "DON-005", donorName: "Safaricom PLC", bookTitle: "Zero to One", condition: "New", dateReceived: "2026-02-03", reviewStatus: "Approved", assignedAccessionId: "ACC-0017" },
-  { id: "DON-006", donorName: "James Oloo", bookTitle: "Things Fall Apart", condition: "Poor", dateReceived: "2026-01-28", reviewStatus: "Rejected" },
-];
-
 const FILTER_OPTIONS = ["All", "Pending", "Approved", "Rejected", "Added to Inventory"] as const;
 
 export default function DonationsPage() {
   const canWrite = useCanWrite();
   const canDelete = useCanDelete();
   const { toast } = useToast();
-  const [donations, setDonations] = useState<Donation[]>(INITIAL_DONATIONS);
+  const { donations, loading, addDonation, approve, reject } = useDonations();
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
@@ -77,21 +57,13 @@ export default function DonationsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const approve = (id: string) => {
-    setDonations((prev) =>
-      prev.map((d) =>
-        d.id === id
-          ? { ...d, reviewStatus: "Approved" as const, assignedAccessionId: `ACC-${String(Math.floor(Math.random() * 9000) + 1000)}` }
-          : d
-      )
-    );
+  const handleApprove = async (id: string) => {
+    await approve(id);
     toast({ title: "Donation approved", description: `${id} approved and assigned accession ID` });
   };
 
-  const reject = (id: string) => {
-    setDonations((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, reviewStatus: "Rejected" as const } : d))
-    );
+  const handleReject = async (id: string) => {
+    await reject(id);
     toast({ title: "Donation rejected", description: `${id} has been rejected` });
   };
 
@@ -130,8 +102,8 @@ export default function DonationsPage() {
                 primary={
                   d.reviewStatus === "Pending"
                     ? [
-                        { label: "Approve", icon: Check, onClick: () => approve(d.id) },
-                        { label: "Reject", icon: XCircle, onClick: () => reject(d.id), variant: "destructive" as const },
+                        { label: "Approve", icon: Check, onClick: () => handleApprove(d.id) },
+                        { label: "Reject", icon: XCircle, onClick: () => handleReject(d.id), variant: "destructive" as const },
                       ]
                     : [{ label: "View", icon: Eye, onClick: () => {} }]
                 }
@@ -149,6 +121,15 @@ export default function DonationsPage() {
         ]
       : []),
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 gap-2 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-[13px]">Loading donations…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -199,19 +180,8 @@ export default function DonationsPage() {
                 size="sm"
                 className="h-8 text-[13px]"
                 disabled={!donorName.trim() || !bookTitle.trim()}
-                onClick={() => {
-                  const id = `DON-${String(donations.length + 1).padStart(3, "0")}`;
-                  setDonations((prev) => [
-                    {
-                      id,
-                      donorName: donorName.trim(),
-                      bookTitle: bookTitle.trim(),
-                      condition,
-                      dateReceived: new Date().toISOString().split("T")[0],
-                      reviewStatus: "Pending",
-                    },
-                    ...prev,
-                  ]);
+                onClick={async () => {
+                  await addDonation({ donorName: donorName.trim(), bookTitle: bookTitle.trim(), condition });
                   toast({ title: "Donation recorded", description: `${bookTitle} from ${donorName}` });
                   setDonorName("");
                   setBookTitle("");

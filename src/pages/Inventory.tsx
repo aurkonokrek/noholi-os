@@ -120,8 +120,8 @@ export default function Inventory() {
     e.target.value = "";
   }, [addBooks]);
 
-  const handleAddBook = useCallback((book: Omit<Book, "id" | "createdAt" | "updatedAt">) => {
-    const id = addBook(book);
+  const handleAddBook = useCallback(async (book: Omit<Book, "id" | "createdAt" | "updatedAt">) => {
+    const id = await addBook(book);
     toast.success(`"${book.title}" added as ${id}`);
   }, [addBook]);
 

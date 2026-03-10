@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Eye, Archive, User, UserX, UserCheck } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Archive, User, UserX, UserCheck, Loader2 } from "lucide-react";
 import { AddMemberDialog } from "@/components/AddMemberDialog";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
@@ -12,17 +12,7 @@ import { ContactInfo } from "@/components/ContactInfo";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useCanWrite, useCanDelete } from "@/lib/roles";
 import { useToast } from "@/hooks/use-toast";
-
-interface Member {
-  memberId: string;
-  name: string;
-  email: string;
-  phone: string;
-  activeLoans: number;
-  fines: number;
-  status: "Active" | "Suspended" | "Expired";
-  avatar?: string;
-}
+import { useMembers, type Member } from "@/hooks/use-members";
 
 const STATUS_VARIANT: Record<Member["status"], BadgeVariant> = {
   Active: "success",
@@ -30,26 +20,13 @@ const STATUS_VARIANT: Record<Member["status"], BadgeVariant> = {
   Expired: "warning",
 };
 
-const MEMBERS_DATA: Member[] = [
-  { memberId: "MEM-1001", name: "Alice Mwangi", email: "alice@email.com", phone: "+254712345678", activeLoans: 2, fines: 0, status: "Active" },
-  { memberId: "MEM-1002", name: "James Oloo", email: "james@email.com", phone: "+254723456789", activeLoans: 0, fines: 150, status: "Active" },
-  { memberId: "MEM-1003", name: "John Otieno", email: "john@email.com", phone: "+254734567890", activeLoans: 0, fines: 500, status: "Suspended" },
-  { memberId: "MEM-1004", name: "Sarah Njoki", email: "sarah@email.com", phone: "+254745678901", activeLoans: 1, fines: 0, status: "Active" },
-  { memberId: "MEM-1005", name: "Peter Kamau", email: "peter@email.com", phone: "+254756789012", activeLoans: 1, fines: 75, status: "Active" },
-  { memberId: "MEM-1006", name: "Grace Wambui", email: "grace@email.com", phone: "+254767890123", activeLoans: 1, fines: 0, status: "Active" },
-  { memberId: "MEM-1007", name: "Daniel Kipchoge", email: "daniel@email.com", phone: "+254778901234", activeLoans: 1, fines: 200, status: "Active" },
-  { memberId: "MEM-1008", name: "Faith Achieng", email: "faith@email.com", phone: "+254789012345", activeLoans: 1, fines: 0, status: "Active" },
-  { memberId: "MEM-1009", name: "Moses Wekesa", email: "moses@email.com", phone: "+254790123456", activeLoans: 0, fines: 0, status: "Expired" },
-  { memberId: "MEM-1010", name: "Lydia Chebet", email: "lydia@email.com", phone: "+254701234567", activeLoans: 0, fines: 350, status: "Suspended" },
-];
-
 const STATUS_OPTIONS = ["All", "Active", "Suspended", "Expired"] as const;
 
 export default function MembersPage() {
   const canWrite = useCanWrite();
   const canDelete = useCanDelete();
   const { toast } = useToast();
-  const [members, setMembers] = useState<Member[]>(MEMBERS_DATA);
+  const { members, loading, addMember, updateStatus } = useMembers();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [showAddMember, setShowAddMember] = useState(false);
@@ -61,14 +38,10 @@ export default function MembersPage() {
 
   const hasFilters = search || statusFilter !== "All";
 
-  const handleStatusChange = () => {
+  const handleStatusChange = async () => {
     if (!confirmAction) return;
     const newStatus = confirmAction.action === "suspend" ? "Suspended" : "Active";
-    setMembers((prev) =>
-      prev.map((m) =>
-        m.memberId === confirmAction.memberId ? { ...m, status: newStatus as Member["status"] } : m
-      )
-    );
+    await updateStatus(confirmAction.memberId, newStatus as Member["status"]);
     toast({
       title: confirmAction.action === "suspend" ? "Member suspended" : "Member reactivated",
       description: `${confirmAction.memberName} is now ${newStatus}`,
@@ -157,6 +130,15 @@ export default function MembersPage() {
       : []),
   ];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 gap-2 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-[13px]">Loading members…</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <PageHeader
@@ -218,12 +200,8 @@ export default function MembersPage() {
       <AddMemberDialog
         open={showAddMember}
         onClose={() => setShowAddMember(false)}
-        onAdd={(member) => {
-          const id = `MEM-${String(members.length + 1001).padStart(4, "0")}`;
-          setMembers((prev) => [
-            { memberId: id, name: member.name, email: member.email, phone: member.phone, activeLoans: 0, fines: 0, status: "Active" },
-            ...prev,
-          ]);
+        onAdd={async (member) => {
+          const id = await addMember(member);
           toast({ title: "Member added", description: `${member.name} (${id})` });
         }}
       />
