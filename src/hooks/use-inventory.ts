@@ -156,6 +156,29 @@ export function useInventory() {
     return { success: true };
   }, [books]);
 
+  const addBook = useCallback((book: Omit<Book, "id" | "createdAt" | "updatedAt">) => {
+    const id = `BK-${String(books.length + 1).padStart(4, "0")}`;
+    const newBook: Book = { ...book, id, createdAt: now(), updatedAt: now() };
+    setBooks((prev) => [newBook, ...prev]);
+    return id;
+  }, [books.length]);
+
+  const addBooks = useCallback((newBooks: Omit<Book, "id" | "createdAt" | "updatedAt">[]) => {
+    setBooks((prev) => {
+      let nextIdx = prev.length + 1;
+      const mapped = newBooks.map((b) => {
+        const id = `BK-${String(nextIdx++).padStart(4, "0")}`;
+        return { ...b, id, createdAt: now(), updatedAt: now() } as Book;
+      });
+      return [...mapped, ...prev];
+    });
+    return newBooks.length;
+  }, []);
+
+  const updateCover = useCallback((id: string, thumbnail: string) => {
+    updateBook(id, (b) => ({ ...b, thumbnail, updatedAt: now() }));
+  }, [updateBook]);
+
   const uniqueGenres = useMemo(() => {
     const genres = new Set(books.map((b) => b.genre));
     return ["All", ...Array.from(genres).sort()];
