@@ -155,10 +155,20 @@ export type Database = {
           book_title: string
           created_at: string
           due_date: string
+          fine_amount: number
+          guarantor_city: string
+          guarantor_district: string
+          guarantor_email: string
+          guarantor_name: string
+          guarantor_phone: string
+          guarantor_postal_code: string
+          guarantor_relationship: string
+          guarantor_street: string
           id: string
           issued_date: string
           member_id: string
           member_name: string
+          return_date: string | null
           status: string
         }
         Insert: {
@@ -166,10 +176,20 @@ export type Database = {
           book_title: string
           created_at?: string
           due_date: string
+          fine_amount?: number
+          guarantor_city?: string
+          guarantor_district?: string
+          guarantor_email?: string
+          guarantor_name?: string
+          guarantor_phone?: string
+          guarantor_postal_code?: string
+          guarantor_relationship?: string
+          guarantor_street?: string
           id: string
           issued_date?: string
           member_id: string
           member_name: string
+          return_date?: string | null
           status?: string
         }
         Update: {
@@ -177,10 +197,20 @@ export type Database = {
           book_title?: string
           created_at?: string
           due_date?: string
+          fine_amount?: number
+          guarantor_city?: string
+          guarantor_district?: string
+          guarantor_email?: string
+          guarantor_name?: string
+          guarantor_phone?: string
+          guarantor_postal_code?: string
+          guarantor_relationship?: string
+          guarantor_street?: string
           id?: string
           issued_date?: string
           member_id?: string
           member_name?: string
+          return_date?: string | null
           status?: string
         }
         Relationships: []
