@@ -183,8 +183,8 @@ export default function Lending() {
       <ExtendLoanDialog loan={extendTarget} open={!!extendTarget} onClose={() => setExtendTarget(null)} onExtend={handleExtend} />
       <ConfirmDialog
         open={!!returnTarget}
+        onOpenChange={(v) => !v && setReturnTarget(null)}
         onConfirm={handleReturn}
-        onCancel={() => setReturnTarget(null)}
         title="Return Book"
         description={returnTarget ? `Confirm return of "${returnTarget.book}" by ${returnTarget.member}? Any overdue fine will be calculated automatically.` : ""}
       />

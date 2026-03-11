@@ -141,7 +141,6 @@ export function useLoans() {
 
     // Update book: increment issued_copies, decrement available_copies
     if (input.bookId) {
-      await supabase.rpc("", {}).catch(() => {}); // no rpc, do manual
       const { data: bookData } = await supabase.from("books").select("issued_copies, available_copies").eq("id", input.bookId).single();
       if (bookData) {
         await supabase.from("books").update({
