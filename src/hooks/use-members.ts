@@ -82,5 +82,20 @@ export function useMembers() {
     await supabase.from("members").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", memberId);
   }, []);
 
-  return { members, loading, addMember, updateStatus };
+  const updateMember = useCallback(async (memberId: string, updates: { name: string; email: string; phone: string }) => {
+    setMembers((prev) => prev.map((m) => m.memberId === memberId ? { ...m, ...updates } : m));
+    await supabase.from("members").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", memberId);
+  }, []);
+
+  const deleteMember = useCallback(async (memberId: string) => {
+    setMembers((prev) => prev.filter((m) => m.memberId !== memberId));
+    await supabase.from("members").delete().eq("id", memberId);
+  }, []);
+
+  const archiveMember = useCallback(async (memberId: string) => {
+    setMembers((prev) => prev.map((m) => m.memberId === memberId ? { ...m, status: "Expired" as const } : m));
+    await supabase.from("members").update({ status: "Expired", updated_at: new Date().toISOString() }).eq("id", memberId);
+  }, []);
+
+  return { members, loading, addMember, updateStatus, updateMember, deleteMember, archiveMember };
 }

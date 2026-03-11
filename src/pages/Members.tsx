@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Eye, Archive, User, UserX, UserCheck, Loader2 } from "lucide-react";
 import { AddMemberDialog } from "@/components/AddMemberDialog";
+import { EditMemberDialog } from "@/components/EditMemberDialog";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
@@ -26,26 +27,36 @@ export default function MembersPage() {
   const canWrite = useCanWrite();
   const canDelete = useCanDelete();
   const { toast } = useToast();
-  const { members, loading, addMember, updateStatus } = useMembers();
+  const { members, loading, addMember, updateStatus, updateMember, deleteMember, archiveMember } = useMembers();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [showAddMember, setShowAddMember] = useState(false);
+  const [editMember, setEditMember] = useState<Member | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
     memberId: string;
     memberName: string;
-    action: "suspend" | "reactivate";
+    action: "suspend" | "reactivate" | "delete" | "archive";
   } | null>(null);
 
   const hasFilters = search || statusFilter !== "All";
 
-  const handleStatusChange = async () => {
+  const handleConfirm = async () => {
     if (!confirmAction) return;
-    const newStatus = confirmAction.action === "suspend" ? "Suspended" : "Active";
-    await updateStatus(confirmAction.memberId, newStatus as Member["status"]);
-    toast({
-      title: confirmAction.action === "suspend" ? "Member suspended" : "Member reactivated",
-      description: `${confirmAction.memberName} is now ${newStatus}`,
-    });
+    const { memberId, memberName, action } = confirmAction;
+
+    if (action === "suspend") {
+      await updateStatus(memberId, "Suspended");
+      toast({ title: "Member suspended", description: `${memberName} is now Suspended` });
+    } else if (action === "reactivate") {
+      await updateStatus(memberId, "Active");
+      toast({ title: "Member reactivated", description: `${memberName} is now Active` });
+    } else if (action === "delete") {
+      await deleteMember(memberId);
+      toast({ title: "Member deleted", description: `${memberName} has been removed` });
+    } else if (action === "archive") {
+      await archiveMember(memberId);
+      toast({ title: "Member archived", description: `${memberName} has been archived` });
+    }
     setConfirmAction(null);
   };
 
@@ -103,7 +114,7 @@ export default function MembersPage() {
               <RowActions
                 primary={[
                   { label: "View", icon: Eye, onClick: () => {} },
-                  { label: "Edit", icon: Pencil, onClick: () => {} },
+                  { label: "Edit", icon: Pencil, onClick: () => setEditMember(m) },
                 ]}
                 secondary={[
                   ...(m.status === "Active"
@@ -118,9 +129,18 @@ export default function MembersPage() {
                         icon: UserCheck,
                         onClick: () => setConfirmAction({ memberId: m.memberId, memberName: m.name, action: "reactivate" }),
                       }]),
-                  { label: "Archive", icon: Archive, onClick: () => {} },
+                  {
+                    label: "Archive",
+                    icon: Archive,
+                    onClick: () => setConfirmAction({ memberId: m.memberId, memberName: m.name, action: "archive" }),
+                  },
                   ...(canDelete
-                    ? [{ label: "Delete", icon: Trash2, onClick: () => {}, variant: "destructive" as const }]
+                    ? [{
+                        label: "Delete",
+                        icon: Trash2,
+                        onClick: () => setConfirmAction({ memberId: m.memberId, memberName: m.name, action: "delete" }),
+                        variant: "destructive" as const,
+                      }]
                     : []),
                 ]}
               />
@@ -186,15 +206,29 @@ export default function MembersPage() {
       <ConfirmDialog
         open={!!confirmAction}
         onOpenChange={(open) => !open && setConfirmAction(null)}
-        title={confirmAction?.action === "suspend" ? "Suspend Member" : "Reactivate Member"}
+        title={
+          confirmAction?.action === "suspend" ? "Suspend Member"
+            : confirmAction?.action === "reactivate" ? "Reactivate Member"
+            : confirmAction?.action === "delete" ? "Delete Member"
+            : "Archive Member"
+        }
         description={
           confirmAction?.action === "suspend"
             ? `Are you sure you want to suspend ${confirmAction.memberName}? They will lose access to borrowing privileges.`
-            : `Reactivate ${confirmAction?.memberName ?? ""}? They will regain borrowing privileges.`
+            : confirmAction?.action === "reactivate"
+            ? `Reactivate ${confirmAction?.memberName ?? ""}? They will regain borrowing privileges.`
+            : confirmAction?.action === "delete"
+            ? `Permanently delete ${confirmAction?.memberName ?? ""}? This action cannot be undone.`
+            : `Archive ${confirmAction?.memberName ?? ""}? Their status will be set to Expired.`
         }
-        confirmLabel={confirmAction?.action === "suspend" ? "Suspend" : "Reactivate"}
-        variant={confirmAction?.action === "suspend" ? "destructive" : "default"}
-        onConfirm={handleStatusChange}
+        confirmLabel={
+          confirmAction?.action === "suspend" ? "Suspend"
+            : confirmAction?.action === "reactivate" ? "Reactivate"
+            : confirmAction?.action === "delete" ? "Delete"
+            : "Archive"
+        }
+        variant={confirmAction?.action === "delete" || confirmAction?.action === "suspend" ? "destructive" : "default"}
+        onConfirm={handleConfirm}
       />
 
       <AddMemberDialog
@@ -203,6 +237,17 @@ export default function MembersPage() {
         onAdd={async (member) => {
           const id = await addMember(member);
           toast({ title: "Member added", description: `${member.name} (${id})` });
+        }}
+      />
+
+      <EditMemberDialog
+        open={!!editMember}
+        onClose={() => setEditMember(null)}
+        member={editMember}
+        onSave={async (updates) => {
+          if (!editMember) return;
+          await updateMember(editMember.memberId, updates);
+          toast({ title: "Member updated", description: `${updates.name} has been updated` });
         }}
       />
     </div>
