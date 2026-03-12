@@ -186,11 +186,12 @@ export function IssueBookForm({ members, books, onIssue }: IssueBookFormProps) {
         {/* Book search */}
         <div className="space-y-1">
           <label className="text-[12px] font-medium text-muted-foreground">Book</label>
+          <p className="text-[11px] text-muted-foreground">Available Books: {availableBooks.length}</p>
           <Popover open={bookOpen} onOpenChange={setBookOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="w-full h-8 text-[13px] justify-between font-normal">
                 {selectedBook ? (
-                  <span className="truncate">{selectedBook.title} <span className="text-muted-foreground text-[11px]">({selectedBook.id})</span></span>
+                  <span className="truncate">{selectedBook.title} — <span className="text-muted-foreground text-[11px]">{selectedBook.id}</span></span>
                 ) : (
                   <span className="text-muted-foreground">Search book or ID…</span>
                 )}
@@ -199,21 +200,19 @@ export function IssueBookForm({ members, books, onIssue }: IssueBookFormProps) {
             </PopoverTrigger>
             <PopoverContent className="p-0 w-[320px]" align="start">
               <Command>
-                <CommandInput placeholder="Search by title or ID..." className="text-[13px]" />
-                <CommandList>
+                <CommandInput placeholder="Search by title, ID, author, ISBN..." className="text-[13px]" />
+                <CommandList className="max-h-[300px]">
                   <CommandEmpty className="text-[13px]">No available books found.</CommandEmpty>
                   <CommandGroup>
-                    {availableBooks.slice(0, 50).map((b) => (
+                    {availableBooks.map((b) => (
                       <CommandItem
                         key={b.id}
-                        value={`${b.title} ${b.id} ${b.author} ${b.isbn}`}
+                        value={`${b.title} ${b.titleBangla} ${b.id} ${b.author} ${b.isbn}`}
                         onSelect={() => { setSelectedBook(b); setBookOpen(false); }}
                         className="text-[13px] cursor-pointer"
                       >
-                        <div className="flex flex-col">
-                          <span className="font-medium">{b.title} — <span className="text-muted-foreground">{b.id}</span></span>
-                          <span className="text-[11px] text-muted-foreground">{b.author} · {b.availableCopies} available{b.isbn ? ` · ISBN: ${b.isbn}` : ""}</span>
-                        </div>
+                        <span className="font-medium">{b.title}</span>
+                        <span className="ml-auto text-[11px] text-muted-foreground">{b.id}</span>
                       </CommandItem>
                     ))}
                   </CommandGroup>
