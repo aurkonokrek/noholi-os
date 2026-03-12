@@ -65,11 +65,11 @@ export function BookDetailDrawer({ book, open, onClose, onUploadCover }: BookDet
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-[360px] sm:w-[400px]">
-        <SheetHeader>
+      <SheetContent className="w-[360px] sm:w-[400px] flex flex-col overflow-hidden">
+        <SheetHeader className="shrink-0">
           <SheetTitle className="text-base">{book.title}</SheetTitle>
         </SheetHeader>
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 space-y-4 overflow-y-auto flex-1 pr-1">
           {/* Cover */}
           <div className="flex items-center justify-center bg-secondary rounded h-48">
             {book.thumbnail ? (
