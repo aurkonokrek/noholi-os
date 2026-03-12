@@ -30,7 +30,8 @@ export interface ActiveLoan {
 
 const FINE_PER_DAY = 10; // currency units per overdue day
 
-function computeStatus(dueDate: string, returnDate: string | null): ActiveLoan["status"] {
+function computeStatus(dueDate: string, returnDate: string | null, dbStatus?: string): ActiveLoan["status"] {
+  if (dbStatus === "Cancelled") return "Cancelled";
   if (returnDate) return "Returned";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
