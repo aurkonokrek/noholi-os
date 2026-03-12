@@ -221,37 +221,49 @@ export type Database = {
       members: {
         Row: {
           active_loans: number
+          address_line: string
           avatar: string | null
+          city: string
           created_at: string
+          district: string
           email: string
           fines: number
           id: string
           name: string
           phone: string
+          postal_code: string
           status: string
           updated_at: string
         }
         Insert: {
           active_loans?: number
+          address_line?: string
           avatar?: string | null
+          city?: string
           created_at?: string
+          district?: string
           email: string
           fines?: number
           id: string
           name: string
           phone?: string
+          postal_code?: string
           status?: string
           updated_at?: string
         }
         Update: {
           active_loans?: number
+          address_line?: string
           avatar?: string | null
+          city?: string
           created_at?: string
+          district?: string
           email?: string
           fines?: number
           id?: string
           name?: string
           phone?: string
+          postal_code?: string
           status?: string
           updated_at?: string
         }
