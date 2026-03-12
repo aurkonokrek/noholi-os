@@ -22,9 +22,10 @@ export interface ActiveLoan {
   issuedDate: string;
   dueDate: string;
   returnDate: string | null;
-  status: "Active" | "Overdue" | "Returned";
+  status: "Active" | "Overdue" | "Returned" | "Cancelled";
   guarantor: GuarantorDetails;
   fineAmount: number;
+  notes: string;
 }
 
 const FINE_PER_DAY = 10; // currency units per overdue day
