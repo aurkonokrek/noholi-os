@@ -176,6 +176,7 @@ export function useLoans() {
       status: "Active",
       guarantor: input.guarantor,
       fineAmount: 0,
+      notes: "",
     };
     setLoans((prev) => [newLoan, ...prev]);
     return { success: true, id };
