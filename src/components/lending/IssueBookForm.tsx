@@ -211,10 +211,9 @@ export function IssueBookForm({ members, books, onIssue }: IssueBookFormProps) {
                         className="text-[13px] cursor-pointer"
                       >
                         <div className="flex flex-col">
-                          <span className="font-medium">{b.title}</span>
-                          <span className="text-[11px] text-muted-foreground">{b.author} · {b.availableCopies} available</span>
+                          <span className="font-medium">{b.title} — <span className="text-muted-foreground">{b.id}</span></span>
+                          <span className="text-[11px] text-muted-foreground">{b.author} · {b.availableCopies} available{b.isbn ? ` · ISBN: ${b.isbn}` : ""}</span>
                         </div>
-                        <span className="ml-auto text-[11px] text-muted-foreground">{b.id}</span>
                       </CommandItem>
                     ))}
                   </CommandGroup>

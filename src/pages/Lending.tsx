@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RotateCcw, Eye, CalendarPlus, BookOpen, Loader2 } from "lucide-react";
+import { RotateCcw, Eye, CalendarPlus, BookOpen, Loader2, Pencil, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { DataTable, type Column } from "@/components/DataTable";
@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { IssueBookForm } from "@/components/lending/IssueBookForm";
 import { LoanDetailModal } from "@/components/lending/LoanDetailModal";
 import { ExtendLoanDialog } from "@/components/lending/ExtendLoanDialog";
+import { EditLoanDialog } from "@/components/lending/EditLoanDialog";
 import { useCanWrite } from "@/lib/roles";
 import { useToast } from "@/hooks/use-toast";
 import { useLoans, type ActiveLoan } from "@/hooks/use-loans";
@@ -19,12 +20,13 @@ const statusVariant: Record<string, BadgeVariant> = {
   Active: "success",
   Overdue: "destructive",
   Returned: "muted",
+  Cancelled: "muted",
 };
 
 export default function Lending() {
   const canWrite = useCanWrite();
   const { toast } = useToast();
-  const { loans, loading, issueLoan, returnLoan, extendLoan } = useLoans();
+  const { loans, loading, issueLoan, returnLoan, extendLoan, updateLoan, cancelLoan } = useLoans();
   const { books } = useInventory();
   const { members } = useMembers();
 
@@ -32,14 +34,20 @@ export default function Lending() {
   const [detailLoan, setDetailLoan] = useState<ActiveLoan | null>(null);
   const [extendTarget, setExtendTarget] = useState<ActiveLoan | null>(null);
   const [returnTarget, setReturnTarget] = useState<ActiveLoan | null>(null);
+  const [editTarget, setEditTarget] = useState<ActiveLoan | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<ActiveLoan | null>(null);
 
-  const filteredLoans = loans.filter(
-    (l) =>
-      !loanSearch ||
-      l.member.toLowerCase().includes(loanSearch.toLowerCase()) ||
-      l.book.toLowerCase().includes(loanSearch.toLowerCase()) ||
-      l.id.toLowerCase().includes(loanSearch.toLowerCase())
-  );
+  const filteredLoans = loans.filter((l) => {
+    if (!loanSearch) return true;
+    const q = loanSearch.toLowerCase();
+    return (
+      l.member.toLowerCase().includes(q) ||
+      l.memberId.toLowerCase().includes(q) ||
+      l.book.toLowerCase().includes(q) ||
+      l.accessionId.toLowerCase().includes(q) ||
+      l.id.toLowerCase().includes(q)
+    );
+  });
 
   const handleReturn = async () => {
     if (!returnTarget) return;
@@ -55,6 +63,17 @@ export default function Lending() {
     setReturnTarget(null);
   };
 
+  const handleCancel = async () => {
+    if (!cancelTarget) return;
+    const result = await cancelLoan(cancelTarget.id);
+    if (result.success) {
+      toast({ title: "Loan cancelled", description: `Loan ${cancelTarget.id} has been cancelled.` });
+    } else {
+      toast({ title: "Error", description: result.error, variant: "destructive" });
+    }
+    setCancelTarget(null);
+  };
+
   const handleExtend = async (loanId: string, newDate: string) => {
     const result = await extendLoan(loanId, newDate);
     if (result.success) {
@@ -62,6 +81,16 @@ export default function Lending() {
     } else {
       toast({ title: "Error", description: result.error, variant: "destructive" });
     }
+  };
+
+  const handleEdit = async (loanId: string, updates: Parameters<typeof updateLoan>[1]) => {
+    const result = await updateLoan(loanId, updates);
+    if (result.success) {
+      toast({ title: "Loan updated", description: `Loan ${loanId} has been updated.` });
+    } else {
+      toast({ title: "Error", description: result.error, variant: "destructive" });
+    }
+    return result;
   };
 
   const handleIssue = async (input: Parameters<typeof issueLoan>[0]) => {
@@ -122,21 +151,30 @@ export default function Lending() {
             label: "",
             headerClassName: "text-right",
             className: "text-right",
-            render: (l: ActiveLoan) => (
-              <RowActions
-                primary={[
-                  ...(l.status !== "Returned"
-                    ? [{ label: "Return", icon: RotateCcw, onClick: () => setReturnTarget(l) }]
-                    : []),
-                  { label: "View", icon: Eye, onClick: () => setDetailLoan(l) },
-                ]}
-                secondary={
-                  l.status !== "Returned"
-                    ? [{ label: "Extend Due Date", icon: CalendarPlus, onClick: () => setExtendTarget(l) }]
-                    : []
-                }
-              />
-            ),
+            render: (l: ActiveLoan) => {
+              const isActive = l.status === "Active" || l.status === "Overdue";
+              return (
+                <RowActions
+                  primary={[
+                    ...(isActive
+                      ? [{ label: "Return", icon: RotateCcw, onClick: () => setReturnTarget(l) }]
+                      : []),
+                    { label: "View", icon: Eye, onClick: () => setDetailLoan(l) },
+                    ...(isActive
+                      ? [{ label: "Edit", icon: Pencil, onClick: () => setEditTarget(l) }]
+                      : []),
+                  ]}
+                  secondary={[
+                    ...(isActive
+                      ? [
+                          { label: "Extend Due Date", icon: CalendarPlus, onClick: () => setExtendTarget(l) },
+                          { label: "Cancel Loan", icon: XCircle, onClick: () => setCancelTarget(l), variant: "destructive" as const },
+                        ]
+                      : []),
+                  ]}
+                />
+              );
+            },
           },
         ]
       : []),
@@ -181,12 +219,20 @@ export default function Lending() {
 
       <LoanDetailModal loan={detailLoan} open={!!detailLoan} onClose={() => setDetailLoan(null)} />
       <ExtendLoanDialog loan={extendTarget} open={!!extendTarget} onClose={() => setExtendTarget(null)} onExtend={handleExtend} />
+      <EditLoanDialog loan={editTarget} open={!!editTarget} onClose={() => setEditTarget(null)} onSave={handleEdit} />
       <ConfirmDialog
         open={!!returnTarget}
         onOpenChange={(v) => !v && setReturnTarget(null)}
         onConfirm={handleReturn}
         title="Return Book"
         description={returnTarget ? `Confirm return of "${returnTarget.book}" by ${returnTarget.member}? Any overdue fine will be calculated automatically.` : ""}
+      />
+      <ConfirmDialog
+        open={!!cancelTarget}
+        onOpenChange={(v) => !v && setCancelTarget(null)}
+        onConfirm={handleCancel}
+        title="Cancel Loan"
+        description={cancelTarget ? `Cancel loan ${cancelTarget.id} for "${cancelTarget.book}"? The book will be returned to available inventory. This action cannot be undone.` : ""}
       />
     </div>
   );
