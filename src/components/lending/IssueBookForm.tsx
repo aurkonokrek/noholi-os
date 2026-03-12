@@ -206,7 +206,7 @@ export function IssueBookForm({ members, books, onIssue }: IssueBookFormProps) {
                     {availableBooks.slice(0, 50).map((b) => (
                       <CommandItem
                         key={b.id}
-                        value={`${b.title} ${b.id} ${b.author}`}
+                        value={`${b.title} ${b.id} ${b.author} ${b.isbn}`}
                         onSelect={() => { setSelectedBook(b); setBookOpen(false); }}
                         className="text-[13px] cursor-pointer"
                       >
