@@ -168,6 +168,7 @@ export type Database = {
           issued_date: string
           member_id: string
           member_name: string
+          notes: string
           return_date: string | null
           status: string
         }
@@ -189,6 +190,7 @@ export type Database = {
           issued_date?: string
           member_id: string
           member_name: string
+          notes?: string
           return_date?: string | null
           status?: string
         }
@@ -210,6 +212,7 @@ export type Database = {
           issued_date?: string
           member_id?: string
           member_name?: string
+          notes?: string
           return_date?: string | null
           status?: string
         }
