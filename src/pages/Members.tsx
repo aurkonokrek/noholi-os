@@ -92,6 +92,14 @@ export default function MembersPage() {
       label: "Contact",
       render: (m) => <ContactInfo email={m.email} phone={m.phone} />,
     },
+    {
+      key: "location",
+      label: "Location",
+      render: (m) => {
+        const loc = [m.city, m.district].filter(Boolean).join(", ");
+        return loc ? <span className="text-[13px] text-muted-foreground">{loc}</span> : <span className="text-muted-foreground/50">—</span>;
+      },
+    },
     { key: "activeLoans", label: "Loans", render: (m) => m.activeLoans },
     { key: "fines", label: "Fines (KES)", render: (m) => (m.fines > 0 ? m.fines.toLocaleString() : "—") },
     {
