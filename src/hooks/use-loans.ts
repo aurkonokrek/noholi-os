@@ -50,7 +50,7 @@ function computeFine(dueDate: string, returnDate: string | null): number {
 }
 
 function dbToLoan(row: any): ActiveLoan {
-  const status = computeStatus(row.due_date, row.return_date);
+  const status = computeStatus(row.due_date, row.return_date, row.status);
   const fineAmount = computeFine(row.due_date, row.return_date);
   return {
     id: row.id,
@@ -74,6 +74,7 @@ function dbToLoan(row: any): ActiveLoan {
       postalCode: row.guarantor_postal_code || "",
     },
     fineAmount,
+    notes: row.notes || "",
   };
 }
 
