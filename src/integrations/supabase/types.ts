@@ -119,32 +119,44 @@ export type Database = {
       donations: {
         Row: {
           assigned_accession_id: string | null
+          book_author: string
           book_title: string
           condition: string
           created_at: string
           date_received: string
+          donor_contact: string
           donor_name: string
           id: string
+          notes: string
+          rejection_reason: string
           review_status: string
         }
         Insert: {
           assigned_accession_id?: string | null
+          book_author?: string
           book_title: string
           condition?: string
           created_at?: string
           date_received?: string
+          donor_contact?: string
           donor_name: string
           id: string
+          notes?: string
+          rejection_reason?: string
           review_status?: string
         }
         Update: {
           assigned_accession_id?: string | null
+          book_author?: string
           book_title?: string
           condition?: string
           created_at?: string
           date_received?: string
+          donor_contact?: string
           donor_name?: string
           id?: string
+          notes?: string
+          rejection_reason?: string
           review_status?: string
         }
         Relationships: []
