@@ -1,0 +1,5 @@
+ALTER TABLE public.donations
+  ADD COLUMN IF NOT EXISTS book_author text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS donor_contact text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS notes text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS rejection_reason text NOT NULL DEFAULT '';
