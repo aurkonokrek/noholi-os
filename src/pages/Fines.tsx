@@ -1,85 +1,55 @@
 import { useState } from "react";
-import { Eye, Trash2, Ban, CheckCircle2, DollarSign } from "lucide-react";
+import { Eye, Ban, DollarSign, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { FilterChips } from "@/components/FilterChips";
 import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge, type BadgeVariant } from "@/components/StatusBadge";
 import { RowActions } from "@/components/RowActions";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { useCanWrite, useCanDelete } from "@/lib/roles";
+import { FineDetailDrawer } from "@/components/fines/FineDetailDrawer";
+import { PayFineDialog } from "@/components/fines/PayFineDialog";
+import { WaiveFineDialog } from "@/components/fines/WaiveFineDialog";
+import { useCanWrite } from "@/lib/roles";
 import { useToast } from "@/hooks/use-toast";
+import { useFines, type Fine, type FineStatus } from "@/hooks/use-fines";
+import { formatTaka } from "@/lib/currency";
 
-interface Fine {
-  id: string;
-  member: string;
-  memberId: string;
-  book: string;
-  daysLate: number;
-  amount: number;
-  status: "unpaid" | "paid" | "waived";
-}
-
-const STATUS_VARIANT: Record<Fine["status"], BadgeVariant> = {
-  unpaid: "destructive",
-  paid: "success",
-  waived: "muted",
+const STATUS_VARIANT: Record<FineStatus, BadgeVariant> = {
+  Unpaid: "destructive",
+  Paid: "success",
+  Waived: "muted",
 };
 
-const INITIAL_FINES: Fine[] = [
-  { id: "F-001", member: "Jane Muthoni", memberId: "M-1001", book: "The River Between", daysLate: 12, amount: 240, status: "unpaid" },
-  { id: "F-002", member: "Peter Kamau", memberId: "M-1004", book: "Weep Not, Child", daysLate: 5, amount: 100, status: "unpaid" },
-  { id: "F-003", member: "Alice Wanjiru", memberId: "M-1002", book: "A Grain of Wheat", daysLate: 3, amount: 60, status: "paid" },
-  { id: "F-004", member: "David Ochieng", memberId: "M-1005", book: "Petals of Blood", daysLate: 20, amount: 400, status: "unpaid" },
-  { id: "F-005", member: "Grace Akinyi", memberId: "M-1003", book: "Born a Crime", daysLate: 7, amount: 140, status: "waived" },
-  { id: "F-006", member: "Samuel Njoroge", memberId: "M-1006", book: "Things Fall Apart", daysLate: 1, amount: 20, status: "paid" },
-];
-
-const FILTER_OPTIONS = ["all", "unpaid", "paid", "waived"] as const;
+const FILTER_OPTIONS = ["All", "Unpaid", "Paid", "Waived"] as const;
 
 export default function FinesPage() {
   const canWrite = useCanWrite();
-  const canDelete = useCanDelete();
   const { toast } = useToast();
-  const [fines, setFines] = useState<Fine[]>(INITIAL_FINES);
-  const [filter, setFilter] = useState<string>("all");
-  const [search, setSearch] = useState("");
-  const [confirmAction, setConfirmAction] = useState<{
-    fineId: string;
-    action: "pay" | "waive";
-  } | null>(null);
+  const { fines, loading, totals, markPaid, waiveFine } = useFines();
 
+  const [filter, setFilter] = useState<string>("All");
+  const [search, setSearch] = useState("");
+  const [detailFine, setDetailFine] = useState<Fine | null>(null);
+  const [payFine, setPayFine] = useState<Fine | null>(null);
+  const [waiveTarget, setWaiveTarget] = useState<Fine | null>(null);
+
+  const q = search.toLowerCase();
   const filtered = fines.filter((f) => {
-    const matchesFilter = filter === "all" || f.status === filter;
+    const matchesFilter = filter === "All" || f.status === filter;
     const matchesSearch =
       !search ||
-      f.member.toLowerCase().includes(search.toLowerCase()) ||
-      f.book.toLowerCase().includes(search.toLowerCase()) ||
-      f.id.toLowerCase().includes(search.toLowerCase());
+      f.member.toLowerCase().includes(q) ||
+      f.memberId.toLowerCase().includes(q) ||
+      f.book.toLowerCase().includes(q) ||
+      f.id.toLowerCase().includes(q) ||
+      f.loanId.toLowerCase().includes(q);
     return matchesFilter && matchesSearch;
   });
 
-  const totalUnpaid = fines
-    .filter((f) => f.status === "unpaid")
-    .reduce((s, f) => s + f.amount, 0);
-
-  const handleConfirm = () => {
-    if (!confirmAction) return;
-    const { fineId, action } = confirmAction;
-    const newStatus = action === "pay" ? "paid" : "waived";
-    setFines((prev) =>
-      prev.map((f) => (f.id === fineId ? { ...f, status: newStatus as Fine["status"] } : f))
-    );
-    toast({
-      title: action === "pay" ? "Fine paid" : "Fine waived",
-      description: `Fine ${fineId} marked as ${newStatus}`,
-    });
-    setConfirmAction(null);
-  };
-
-  const hasFilters = search || filter !== "all";
+  const hasFilters = search || filter !== "All";
 
   const columns: Column<Fine>[] = [
+    { key: "id", label: "Fine ID", className: "text-muted-foreground font-mono text-[12px]", render: (f) => f.id },
     {
       key: "member",
       label: "Member",
@@ -90,23 +60,26 @@ export default function FinesPage() {
         </>
       ),
     },
-    { key: "book", label: "Book", render: (f) => f.book },
-    { key: "daysLate", label: "Days Late", headerClassName: "text-right", className: "text-right", render: (f) => f.daysLate },
+    { key: "book", label: "Book", className: "max-w-[200px] truncate", render: (f) => f.book },
+    { key: "dueDate", label: "Due Date", className: "text-muted-foreground", render: (f) => f.dueDate },
+    {
+      key: "daysOverdue",
+      label: "Days Overdue",
+      headerClassName: "text-right",
+      className: "text-right font-mono text-[12px]",
+      render: (f) => f.daysOverdue,
+    },
     {
       key: "amount",
-      label: "Amount (KES)",
+      label: "Amount (৳)",
       headerClassName: "text-right",
       className: "text-right font-medium",
-      render: (f) => f.amount.toLocaleString(),
+      render: (f) => formatTaka(f.amount),
     },
     {
       key: "status",
       label: "Status",
-      render: (f) => (
-        <StatusBadge variant={STATUS_VARIANT[f.status]}>
-          {f.status.charAt(0).toUpperCase() + f.status.slice(1)}
-        </StatusBadge>
-      ),
+      render: (f) => <StatusBadge variant={STATUS_VARIANT[f.status]}>{f.status}</StatusBadge>,
     },
     ...(canWrite
       ? [
@@ -118,18 +91,15 @@ export default function FinesPage() {
             render: (f: Fine) => (
               <RowActions
                 primary={
-                  f.status === "unpaid"
-                    ? [{ label: "Mark Paid", icon: DollarSign, onClick: () => setConfirmAction({ fineId: f.id, action: "pay" }) }]
-                    : []
+                  f.status === "Unpaid"
+                    ? [{ label: "Record Payment", icon: DollarSign, onClick: () => setPayFine(f) }]
+                    : [{ label: "View details", icon: Eye, onClick: () => setDetailFine(f) }]
                 }
                 secondary={[
-                  ...(f.status === "unpaid"
-                    ? [{ label: "Waive fine", icon: Ban, onClick: () => setConfirmAction({ fineId: f.id, action: "waive" }) }]
+                  ...(f.status === "Unpaid"
+                    ? [{ label: "Waive fine", icon: Ban, onClick: () => setWaiveTarget(f), variant: "destructive" as const }]
                     : []),
-                  { label: "View details", icon: Eye, onClick: () => {} },
-                  ...(canDelete
-                    ? [{ label: "Delete", icon: Trash2, onClick: () => {}, variant: "destructive" as const }]
-                    : []),
+                  { label: "View details", icon: Eye, onClick: () => setDetailFine(f) },
                 ]}
               />
             ),
@@ -138,20 +108,31 @@ export default function FinesPage() {
       : []),
   ];
 
-  const fine = confirmAction ? fines.find((f) => f.id === confirmAction.fineId) : null;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 gap-2 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-[13px]">Loading fines…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
       <PageHeader
         title="Fines"
-        subtitle={`Outstanding: KES ${totalUnpaid.toLocaleString()}`}
+        subtitle={`Outstanding ${formatTaka(totals.unpaid)} · Collected ${formatTaka(totals.paid)} · Waived ${formatTaka(totals.waived)}`}
       />
+
+      <p className="text-[12px] text-muted-foreground">
+        Fines are derived from overdue loan records. Settle each fine with an explicit action.
+      </p>
 
       <div className="flex items-center gap-2 flex-wrap">
         <SearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Search fines..."
+          placeholder="Search by member, book, fine or loan ID..."
           className="flex-1 min-w-[200px] max-w-xs"
         />
         <FilterChips
@@ -161,7 +142,7 @@ export default function FinesPage() {
         />
         {hasFilters && (
           <button
-            onClick={() => { setSearch(""); setFilter("all"); }}
+            onClick={() => { setSearch(""); setFilter("All"); }}
             className="text-[12px] text-muted-foreground hover:text-foreground underline"
           >
             Reset
@@ -169,26 +150,51 @@ export default function FinesPage() {
         )}
       </div>
 
+      <div className="text-[12px] text-muted-foreground">
+        Showing {filtered.length} of {totals.count} fines
+      </div>
+
       <DataTable
         columns={columns}
         data={filtered}
         keyExtractor={(f) => f.id}
+        onRowClick={(f) => setDetailFine(f)}
         emptyMessage="No fines found."
         compact
       />
 
-      <ConfirmDialog
-        open={!!confirmAction}
-        onOpenChange={(open) => !open && setConfirmAction(null)}
-        title={confirmAction?.action === "pay" ? "Confirm Payment" : "Waive Fine"}
-        description={
-          confirmAction?.action === "pay"
-            ? `Mark fine ${confirmAction?.fineId} (KES ${fine?.amount.toLocaleString() ?? 0}) as paid?`
-            : `Waive fine ${confirmAction?.fineId} (KES ${fine?.amount.toLocaleString() ?? 0})? This action cannot be undone.`
-        }
-        confirmLabel={confirmAction?.action === "pay" ? "Confirm Paid" : "Waive Fine"}
-        variant={confirmAction?.action === "waive" ? "destructive" : "default"}
-        onConfirm={handleConfirm}
+      <FineDetailDrawer
+        fine={detailFine}
+        open={!!detailFine}
+        onClose={() => setDetailFine(null)}
+      />
+
+      <PayFineDialog
+        fine={payFine}
+        open={!!payFine}
+        onClose={() => setPayFine(null)}
+        onConfirm={async (payment) => {
+          if (!payFine) return { success: false, error: "No fine selected" };
+          const result = await markPaid(payFine.id, payment);
+          if (result.success) {
+            toast({ title: "Payment recorded", description: `${payFine.id} · ${formatTaka(payment.amountPaid)}` });
+          }
+          return result;
+        }}
+      />
+
+      <WaiveFineDialog
+        fine={waiveTarget}
+        open={!!waiveTarget}
+        onClose={() => setWaiveTarget(null)}
+        onConfirm={async (reason) => {
+          if (!waiveTarget) return { success: false, error: "No fine selected" };
+          const result = await waiveFine(waiveTarget.id, reason);
+          if (result.success) {
+            toast({ title: "Fine waived", description: `${waiveTarget.id} written off` });
+          }
+          return result;
+        }}
       />
     </div>
   );
