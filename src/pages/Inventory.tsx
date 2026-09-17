@@ -31,7 +31,7 @@ const STATUSES = ["All", "Available", "Unavailable", "Out of Stock"] as const;
 export default function Inventory() {
   const canWrite = useCanWrite();
   const canDelete = useCanDelete();
-  const { books: rawBooks, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook, addBook, addBooks, updateCover } = useInventory();
+  const { books: rawBooks, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook, addBook, addBooks, updateCover, updateBookDetails } = useInventory();
   const { coverMap, uploadCover } = useBookCovers();
 
   // Merge persistent covers into books
