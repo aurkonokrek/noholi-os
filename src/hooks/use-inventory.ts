@@ -149,6 +149,41 @@ export function useInventory() {
     await supabase.from("books").update(bookToDb(updated)).eq("id", id);
   }, [books]);
 
+  const updateBookDetails = useCallback(async (
+    id: string,
+    updates: Partial<Omit<Book, "id" | "createdAt" | "updatedAt" | "availableCopies" | "issuedCopies" | "reservedCopies">>,
+  ): Promise<Result> => {
+    const book = books.find((b) => b.id === id);
+    if (!book) return { success: false, error: "Book not found" };
+    if (!updates.title?.toString().trim() && !book.title) return { success: false, error: "Title is required" };
+
+    const totalCopies = updates.totalCopies ?? book.totalCopies;
+    const minRequired = book.issuedCopies + book.reservedCopies;
+    if (totalCopies < 0) return { success: false, error: "Total copies cannot be negative" };
+    if (totalCopies < minRequired) {
+      return { success: false, error: `Total copies cannot go below ${minRequired} (${book.issuedCopies} issued + ${book.reservedCopies} reserved)` };
+    }
+
+    const merged: Book = {
+      ...book,
+      ...updates,
+      totalCopies,
+      availableCopies: totalCopies - book.issuedCopies - book.reservedCopies,
+      issuedCopies: book.issuedCopies,
+      reservedCopies: book.reservedCopies,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from("books")
+      .update({ ...bookToDb(merged), updated_at: merged.updatedAt })
+      .eq("id", id);
+    if (error) return { success: false, error: error.message };
+
+    setBooks((prev) => prev.map((b) => (b.id === id ? merged : b)));
+    return { success: true };
+  }, [books]);
+
   const adjustStock = useCallback(async (id: string, newTotal: number): Promise<Result> => {
     const book = books.find((b) => b.id === id);
     if (!book) return { success: false, error: "Book not found" };
