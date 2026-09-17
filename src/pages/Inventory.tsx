@@ -165,6 +165,17 @@ export default function Inventory() {
     return { success: false, error: result.error };
   };
 
+  const handleEditSave = async (updates: BookMetadataUpdates) => {
+    if (!editBook) return { success: false, error: "No book selected" };
+    const result = await updateBookDetails(editBook.id, updates);
+    if (result.success) {
+      toast.success(`"${updates.title}" updated`);
+      return { success: true } as { success: boolean; error?: string };
+    }
+    toast.error(result.error);
+    return { success: false, error: result.error };
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     const result = await deleteBook(deleteTarget.id);
