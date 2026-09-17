@@ -428,6 +428,13 @@ export default function Inventory() {
         onClose={() => setShowAddBook(false)}
         onAdd={handleAddBook}
       />
+
+      <EditBookDialog
+        book={editBook}
+        open={!!editBook}
+        onClose={() => setEditBook(null)}
+        onSave={handleEditSave}
+      />
     </div>
   );
 }
