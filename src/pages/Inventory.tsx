@@ -12,6 +12,7 @@ import { BookDetailDrawer } from "@/components/BookDetailDrawer";
 import { AdjustStockDialog } from "@/components/AdjustStockDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { AddBookDialog } from "@/components/AddBookDialog";
+import { EditBookDialog, type BookMetadataUpdates } from "@/components/EditBookDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useInventory, deriveStatus, isLowStock, type Book, type BookStatus } from "@/hooks/use-inventory";
 import { useBookCovers } from "@/hooks/use-book-covers";
@@ -31,7 +32,7 @@ const STATUSES = ["All", "Available", "Unavailable", "Out of Stock"] as const;
 export default function Inventory() {
   const canWrite = useCanWrite();
   const canDelete = useCanDelete();
-  const { books: rawBooks, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook, addBook, addBooks, updateCover } = useInventory();
+  const { books: rawBooks, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook, addBook, addBooks, updateCover, updateBookDetails } = useInventory();
   const { coverMap, uploadCover } = useBookCovers();
 
   // Merge persistent covers into books
@@ -48,6 +49,7 @@ export default function Inventory() {
   const [stockBook, setStockBook] = useState<Book | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Book | null>(null);
   const [showAddBook, setShowAddBook] = useState(false);
+  const [editBook, setEditBook] = useState<Book | null>(null);
 
   const exportBooks = useCallback(() => {
     const exportData = books.map((b) => ({
@@ -163,6 +165,17 @@ export default function Inventory() {
     return { success: false, error: result.error };
   };
 
+  const handleEditSave = async (updates: BookMetadataUpdates) => {
+    if (!editBook) return { success: false, error: "No book selected" };
+    const result = await updateBookDetails(editBook.id, updates);
+    if (result.success) {
+      toast.success(`"${updates.title}" updated`);
+      return { success: true } as { success: boolean; error?: string };
+    }
+    toast.error(result.error);
+    return { success: false, error: result.error };
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     const result = await deleteBook(deleteTarget.id);
@@ -246,7 +259,7 @@ export default function Inventory() {
               <RowActions
                 primary={[
                   { label: "View", icon: Eye, onClick: () => setSelectedBook(b) },
-                  { label: "Edit", icon: Pencil, onClick: () => {} },
+                  { label: "Edit", icon: Pencil, onClick: () => setEditBook(b) },
                 ]}
                 secondary={[
                   { label: "Adjust Stock", icon: Package, onClick: () => setStockBook(b) },
@@ -414,6 +427,13 @@ export default function Inventory() {
         open={showAddBook}
         onClose={() => setShowAddBook(false)}
         onAdd={handleAddBook}
+      />
+
+      <EditBookDialog
+        book={editBook}
+        open={!!editBook}
+        onClose={() => setEditBook(null)}
+        onSave={handleEditSave}
       />
     </div>
   );
