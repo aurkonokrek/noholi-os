@@ -248,7 +248,7 @@ export default function Inventory() {
               <RowActions
                 primary={[
                   { label: "View", icon: Eye, onClick: () => setSelectedBook(b) },
-                  { label: "Edit", icon: Pencil, onClick: () => {} },
+                  { label: "Edit", icon: Pencil, onClick: () => setEditBook(b) },
                 ]}
                 secondary={[
                   { label: "Adjust Stock", icon: Package, onClick: () => setStockBook(b) },
