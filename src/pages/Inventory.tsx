@@ -12,6 +12,7 @@ import { BookDetailDrawer } from "@/components/BookDetailDrawer";
 import { AdjustStockDialog } from "@/components/AdjustStockDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { AddBookDialog } from "@/components/AddBookDialog";
+import { EditBookDialog, type BookMetadataUpdates } from "@/components/EditBookDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useInventory, deriveStatus, isLowStock, type Book, type BookStatus } from "@/hooks/use-inventory";
 import { useBookCovers } from "@/hooks/use-book-covers";
