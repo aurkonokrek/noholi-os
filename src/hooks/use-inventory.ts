@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { parseBooksExcel } from "@/lib/parse-books-excel";
 
@@ -97,63 +97,169 @@ function bookToDb(book: Omit<Book, "createdAt" | "updatedAt"> & { id: string }) 
   };
 }
 
-export function useInventory() {
-  const [books, setBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState(true);
+/* ------------------------------------------------------------------
+ * Shared inventory store — single source of truth.
+ *
+ * Every screen (Inventory, Lending, Donations, Dashboard) reads and
+ * mutates the SAME state, so a lending action is reflected in Inventory
+ * without a manual stock edit. A backend team can later replace the
+ * mutation helpers below with real transactional database operations
+ * without touching any UI code.
+ * ------------------------------------------------------------------ */
 
-  // Load from DB, seed from Excel if empty
-  useEffect(() => {
-    (async () => {
-      try {
-        // Fetch ALL books (Supabase default limit is 1000)
-        let allRows: any[] = [];
-        let from = 0;
-        const PAGE = 1000;
-        while (true) {
-          const { data, error } = await supabase.from("books").select("*").order("id").range(from, from + PAGE - 1);
-          if (error) throw error;
-          if (!data || data.length === 0) break;
-          allRows = allRows.concat(data);
-          if (data.length < PAGE) break;
-          from += PAGE;
-        }
+interface InventoryState {
+  books: Book[];
+  loading: boolean;
+}
 
-        if (allRows.length > 0) {
-          setBooks(allRows.map(dbToBook));
-        } else {
-          // Seed from Excel
-          const parsed = await parseBooksExcel("/data/All_Book_List.xlsx");
-          const rows = parsed.map((b) => bookToDb(b as any));
-          // Insert in batches of 500
-          for (let i = 0; i < rows.length; i += 500) {
-            const batch = rows.slice(i, i + 500);
-            const { error: insertErr } = await supabase.from("books").insert(batch);
-            if (insertErr) console.error("Seed insert error:", insertErr);
-          }
-          setBooks(parsed);
-        }
-      } catch (err) {
-        console.error("Failed to load books:", err);
-      } finally {
-        setLoading(false);
+let state: InventoryState = { books: [], loading: true };
+const listeners = new Set<() => void>();
+
+function emit(next: Partial<InventoryState>) {
+  state = { ...state, ...next };
+  listeners.forEach((l) => l());
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function getSnapshot() {
+  return state;
+}
+
+function setBooks(updater: (books: Book[]) => Book[]) {
+  emit({ books: updater(state.books) });
+}
+
+let loadPromise: Promise<void> | null = null;
+
+async function loadInventory() {
+  try {
+    // Fetch ALL books (Supabase default limit is 1000)
+    let allRows: any[] = [];
+    let from = 0;
+    const PAGE = 1000;
+    while (true) {
+      const { data, error } = await supabase.from("books").select("*").order("id").range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      allRows = allRows.concat(data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+
+    if (allRows.length > 0) {
+      emit({ books: allRows.map(dbToBook) });
+    } else {
+      // Seed the real catalogue from the source Excel file (never demo data)
+      const parsed = await parseBooksExcel("/data/All_Book_List.xlsx");
+      const rows = parsed.map((b) => bookToDb(b as any));
+      for (let i = 0; i < rows.length; i += 500) {
+        const batch = rows.slice(i, i + 500);
+        const { error: insertErr } = await supabase.from("books").insert(batch);
+        if (insertErr) console.error("Seed insert error:", insertErr);
       }
-    })();
-  }, []);
+      emit({ books: parsed });
+    }
+  } catch (err) {
+    console.error("Failed to load books:", err);
+  } finally {
+    emit({ loading: false });
+  }
+}
 
-  const updateBook = useCallback(async (id: string, updater: (b: Book) => Book) => {
-    setBooks((prev) => prev.map((b) => (b.id === id ? updater(b) : b)));
-    // Get updated version
-    const book = books.find((b) => b.id === id);
-    if (!book) return;
-    const updated = updater(book);
-    await supabase.from("books").update(bookToDb(updated)).eq("id", id);
-  }, [books]);
+function ensureInventoryLoaded(): Promise<void> {
+  if (!loadPromise) loadPromise = loadInventory();
+  return loadPromise;
+}
+
+/** Persist new copy counts for a book and update the shared store. */
+async function writeCounts(book: Book, counts: { issuedCopies: number; reservedCopies: number }): Promise<Result> {
+  const availableCopies = book.totalCopies - counts.issuedCopies - counts.reservedCopies;
+  if (counts.issuedCopies < 0 || counts.reservedCopies < 0 || availableCopies < 0) {
+    return { success: false, error: "Copy counts cannot become negative" };
+  }
+  const updatedAt = new Date().toISOString();
+  const { error } = await supabase
+    .from("books")
+    .update({
+      issued_copies: counts.issuedCopies,
+      reserved_copies: counts.reservedCopies,
+      available_copies: availableCopies,
+      updated_at: updatedAt,
+    })
+    .eq("id", book.id);
+  if (error) return { success: false, error: error.message };
+
+  setBooks((books) =>
+    books.map((b) =>
+      b.id === book.id
+        ? { ...b, issuedCopies: counts.issuedCopies, reservedCopies: counts.reservedCopies, availableCopies, updatedAt }
+        : b
+    )
+  );
+  return { success: true };
+}
+
+async function findBook(bookId: string): Promise<Book | undefined> {
+  await ensureInventoryLoaded();
+  return state.books.find((b) => b.id === bookId);
+}
+
+/** Lending → Inventory: one copy leaves the shelf. */
+export async function issueCopy(bookId: string): Promise<Result> {
+  const book = await findBook(bookId);
+  if (!book) return { success: false, error: "Book not found in inventory" };
+  if (book.availableCopies <= 0) return { success: false, error: `No available copies of "${book.title}"` };
+  return writeCounts(book, { issuedCopies: book.issuedCopies + 1, reservedCopies: book.reservedCopies });
+}
+
+/** Lending → Inventory: one issued copy comes back. */
+export async function returnCopy(bookId: string): Promise<Result> {
+  const book = await findBook(bookId);
+  if (!book) return { success: false, error: "Book not found in inventory" };
+  if (book.issuedCopies <= 0) return { success: false, error: `No issued copies of "${book.title}" to return` };
+  return writeCounts(book, { issuedCopies: book.issuedCopies - 1, reservedCopies: book.reservedCopies });
+}
+
+/** Reservation → Inventory: hold one copy. */
+export async function reserveCopy(bookId: string): Promise<Result> {
+  const book = await findBook(bookId);
+  if (!book) return { success: false, error: "Book not found in inventory" };
+  if (book.availableCopies <= 0) return { success: false, error: `No available copies of "${book.title}" to reserve` };
+  return writeCounts(book, { issuedCopies: book.issuedCopies, reservedCopies: book.reservedCopies + 1 });
+}
+
+/** Reservation cancelled/completed → release the hold. */
+export async function releaseReservation(bookId: string): Promise<Result> {
+  const book = await findBook(bookId);
+  if (!book) return { success: false, error: "Book not found in inventory" };
+  if (book.reservedCopies <= 0) return { success: false, error: `No reserved copies of "${book.title}" to release` };
+  return writeCounts(book, { issuedCopies: book.issuedCopies, reservedCopies: book.reservedCopies - 1 });
+}
+
+export function getInventorySnapshot(): Book[] {
+  return state.books;
+}
+
+export function useInventory() {
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const books = snapshot.books;
+  const loading = snapshot.loading;
+
+  useEffect(() => {
+    ensureInventoryLoaded();
+  }, []);
 
   const updateBookDetails = useCallback(async (
     id: string,
     updates: Partial<Omit<Book, "id" | "createdAt" | "updatedAt" | "availableCopies" | "issuedCopies" | "reservedCopies">>,
   ): Promise<Result> => {
-    const book = books.find((b) => b.id === id);
+    const book = state.books.find((b) => b.id === id);
     if (!book) return { success: false, error: "Book not found" };
     if (!updates.title?.toString().trim() && !book.title) return { success: false, error: "Title is required" };
 
@@ -182,29 +288,29 @@ export function useInventory() {
 
     setBooks((prev) => prev.map((b) => (b.id === id ? merged : b)));
     return { success: true };
-  }, [books]);
+  }, []);
 
   const adjustStock = useCallback(async (id: string, newTotal: number): Promise<Result> => {
-    const book = books.find((b) => b.id === id);
+    const book = state.books.find((b) => b.id === id);
     if (!book) return { success: false, error: "Book not found" };
     if (newTotal < 0) return { success: false, error: "Total copies cannot be negative" };
     const minRequired = book.issuedCopies + book.reservedCopies;
     if (newTotal < minRequired) {
       return { success: false, error: `Cannot go below ${minRequired} (${book.issuedCopies} issued + ${book.reservedCopies} reserved)` };
     }
-    const diff = newTotal - book.totalCopies;
-    const updates = {
+    const updatedAt = new Date().toISOString();
+    const availableCopies = newTotal - book.issuedCopies - book.reservedCopies;
+    setBooks((prev) => prev.map((b) => b.id === id ? { ...b, totalCopies: newTotal, availableCopies, updatedAt } : b));
+    await supabase.from("books").update({
       total_copies: newTotal,
-      available_copies: book.availableCopies + diff,
-      updated_at: new Date().toISOString(),
-    };
-    setBooks((prev) => prev.map((b) => b.id === id ? { ...b, totalCopies: newTotal, availableCopies: b.availableCopies + diff, updatedAt: updates.updated_at } : b));
-    await supabase.from("books").update(updates).eq("id", id);
+      available_copies: availableCopies,
+      updated_at: updatedAt,
+    }).eq("id", id);
     return { success: true };
-  }, [books]);
+  }, []);
 
   const deleteBook = useCallback(async (id: string): Promise<Result> => {
-    const book = books.find((b) => b.id === id);
+    const book = state.books.find((b) => b.id === id);
     if (!book) return { success: false, error: "Book not found" };
     if (book.issuedCopies > 0 || book.reservedCopies > 0) {
       return { success: false, error: "Cannot delete a book with issued or reserved copies" };
@@ -212,35 +318,33 @@ export function useInventory() {
     setBooks((prev) => prev.filter((b) => b.id !== id));
     await supabase.from("books").delete().eq("id", id);
     return { success: true };
-  }, [books]);
+  }, []);
 
   const addBook = useCallback(async (book: Omit<Book, "id" | "createdAt" | "updatedAt">) => {
-    const id = `BK-${String(books.length + 1).padStart(4, "0")}`;
+    const id = nextBookId(state.books, 0);
     const now = new Date().toISOString();
     const newBook: Book = { ...book, id, createdAt: now, updatedAt: now };
     setBooks((prev) => [newBook, ...prev]);
     await supabase.from("books").insert(bookToDb(newBook));
     return id;
-  }, [books.length]);
+  }, []);
 
   const addBooks = useCallback(async (newBooks: Omit<Book, "id" | "createdAt" | "updatedAt">[]) => {
     const now = new Date().toISOString();
-    let nextIdx = books.length + 1;
-    const mapped = newBooks.map((b) => {
-      const id = `BK-${String(nextIdx++).padStart(4, "0")}`;
-      return { ...b, id, createdAt: now, updatedAt: now } as Book;
-    });
+    const existing = state.books;
+    const mapped = newBooks.map((b, i) => ({ ...b, id: nextBookId(existing, i), createdAt: now, updatedAt: now } as Book));
     setBooks((prev) => [...mapped, ...prev]);
     const rows = mapped.map((b) => bookToDb(b));
     for (let i = 0; i < rows.length; i += 500) {
       await supabase.from("books").insert(rows.slice(i, i + 500));
     }
     return newBooks.length;
-  }, [books.length]);
+  }, []);
 
   const updateCover = useCallback(async (id: string, thumbnail: string) => {
-    setBooks((prev) => prev.map((b) => b.id === id ? { ...b, thumbnail, updatedAt: new Date().toISOString() } : b));
-    await supabase.from("books").update({ thumbnail, updated_at: new Date().toISOString() }).eq("id", id);
+    const updatedAt = new Date().toISOString();
+    setBooks((prev) => prev.map((b) => b.id === id ? { ...b, thumbnail, updatedAt } : b));
+    await supabase.from("books").update({ thumbnail, updated_at: updatedAt }).eq("id", id);
   }, []);
 
   const uniqueGenres = useMemo(() => {
@@ -262,5 +366,15 @@ export function useInventory() {
     lowStock: books.filter(isLowStock).length,
   }), [books]);
 
-  return { books, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook, addBook, addBooks, updateCover, updateBookDetails };
+  return { books, loading, stats, uniqueGenres, uniqueCategories, adjustStock, deleteBook, addBook, addBooks, updateCover, updateBookDetails, issueCopy, returnCopy, reserveCopy, releaseReservation };
+}
+
+/** Next free BK-#### id, offset by `offset` for batch inserts. */
+function nextBookId(books: Book[], offset: number): string {
+  let max = 0;
+  for (const b of books) {
+    const m = /^BK-(\d+)$/.exec(b.id);
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return `BK-${String(max + 1 + offset).padStart(4, "0")}`;
 }
