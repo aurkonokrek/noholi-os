@@ -8,6 +8,13 @@
       "when": 1789503937176,
       "tag": "0000_donation_review_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789828018418,
+      "tag": "0001_member_merit_grade",
+      "breakpoints": true
     }
   ]
 }

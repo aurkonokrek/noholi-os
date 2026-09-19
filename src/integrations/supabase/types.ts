@@ -241,6 +241,8 @@ export type Database = {
           email: string
           fines: number
           id: string
+          merit_grade: string
+          merit_note: string
           name: string
           phone: string
           postal_code: string
@@ -257,6 +259,8 @@ export type Database = {
           email: string
           fines?: number
           id: string
+          merit_grade?: string
+          merit_note?: string
           name: string
           phone?: string
           postal_code?: string
@@ -273,6 +277,8 @@ export type Database = {
           email?: string
           fines?: number
           id?: string
+          merit_grade?: string
+          merit_note?: string
           name?: string
           phone?: string
           postal_code?: string
