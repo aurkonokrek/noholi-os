@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { issueCopy, returnCopy } from "@/hooks/use-inventory";
 
 export interface GuarantorDetails {
   name: string;
@@ -139,19 +140,15 @@ export function useLoans() {
       fine_amount: 0,
     };
 
-    const { error } = await supabase.from("loans").insert(row);
-    if (error) return { success: false, error: error.message };
+    // Shared inventory layer owns the copy counts (and its own validation)
+    if (!input.bookId) return { success: false, error: "Select a book from the inventory" };
+    const inventoryResult = await issueCopy(input.bookId);
+    if (!inventoryResult.success) return { success: false, error: inventoryResult.error };
 
-    // Update book: increment issued_copies, decrement available_copies
-    if (input.bookId) {
-      const { data: bookData } = await supabase.from("books").select("issued_copies, available_copies").eq("id", input.bookId).single();
-      if (bookData) {
-        await supabase.from("books").update({
-          issued_copies: bookData.issued_copies + 1,
-          available_copies: Math.max(0, bookData.available_copies - 1),
-          updated_at: new Date().toISOString(),
-        }).eq("id", input.bookId);
-      }
+    const { error } = await supabase.from("loans").insert(row);
+    if (error) {
+      await returnCopy(input.bookId); // revert the inventory movement
+      return { success: false, error: error.message };
     }
 
     // Update member active_loans
