@@ -303,19 +303,16 @@ export function useLoans() {
     if (!loan) return { success: false, error: "Loan not found" };
     if (loan.status === "Returned" || loan.status === "Cancelled") return { success: false, error: "Cannot cancel this loan" };
 
-    const { error } = await supabase.from("loans").update({ status: "Cancelled" }).eq("id", loanId);
-    if (error) return { success: false, error: error.message };
-
-    // Restore book availability
+    // Shared inventory layer restores availability
     if (loan.bookId) {
-      const { data: bookData } = await supabase.from("books").select("issued_copies, available_copies").eq("id", loan.bookId).single();
-      if (bookData) {
-        await supabase.from("books").update({
-          issued_copies: Math.max(0, bookData.issued_copies - 1),
-          available_copies: bookData.available_copies + 1,
-          updated_at: new Date().toISOString(),
-        }).eq("id", loan.bookId);
-      }
+      const inventoryResult = await returnCopy(loan.bookId);
+      if (!inventoryResult.success) return { success: false, error: inventoryResult.error };
+    }
+
+    const { error } = await supabase.from("loans").update({ status: "Cancelled" }).eq("id", loanId);
+    if (error) {
+      if (loan.bookId) await issueCopy(loan.bookId);
+      return { success: false, error: error.message };
     }
 
     // Update member active_loans
