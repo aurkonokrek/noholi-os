@@ -182,27 +182,26 @@ export function useLoans() {
   const returnLoan = useCallback(async (loanId: string): Promise<{ success: boolean; error?: string; fine?: number }> => {
     const loan = loans.find((l) => l.id === loanId);
     if (!loan) return { success: false, error: "Loan not found" };
+    if (loan.status === "Returned") return { success: false, error: "This loan has already been returned" };
+    if (loan.status === "Cancelled") return { success: false, error: "This loan was cancelled" };
 
     const returnDate = new Date().toISOString().split("T")[0];
     const fine = computeFine(loan.dueDate, returnDate);
+
+    // Shared inventory layer owns the copy counts (and its own validation)
+    if (loan.bookId) {
+      const inventoryResult = await returnCopy(loan.bookId);
+      if (!inventoryResult.success) return { success: false, error: inventoryResult.error };
+    }
 
     const { error } = await supabase.from("loans").update({
       status: "Returned",
       return_date: returnDate,
       fine_amount: fine,
     }).eq("id", loanId);
-    if (error) return { success: false, error: error.message };
-
-    // Update book: decrement issued, increment available
-    if (loan.bookId) {
-      const { data: bookData } = await supabase.from("books").select("issued_copies, available_copies").eq("id", loan.bookId).single();
-      if (bookData) {
-        await supabase.from("books").update({
-          issued_copies: Math.max(0, bookData.issued_copies - 1),
-          available_copies: bookData.available_copies + 1,
-          updated_at: new Date().toISOString(),
-        }).eq("id", loan.bookId);
-      }
+    if (error) {
+      if (loan.bookId) await issueCopy(loan.bookId); // revert the inventory movement
+      return { success: false, error: error.message };
     }
 
     // Update member active_loans
