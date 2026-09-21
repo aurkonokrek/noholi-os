@@ -185,9 +185,9 @@ export function useLoans() {
     };
     setLoans((prev) => [newLoan, ...prev]);
     return { success: true, id };
-  }, [loans.length]);
+  }, [loans]);
 
-  const returnLoan = useCallback(async (loanId: string): Promise<{ success: boolean; error?: string; fine?: number }> => {
+  const returnLoan = useCallback(async (loanId: string): Promise<{ success: boolean; error?: string; fine?: number; inventoryWarning?: string }> => {
     const loan = loans.find((l) => l.id === loanId);
     if (!loan) return { success: false, error: "Loan not found" };
     if (loan.status === "Returned") return { success: false, error: "This loan has already been returned" };
@@ -196,10 +196,14 @@ export function useLoans() {
     const returnDate = new Date().toISOString().split("T")[0];
     const fine = computeFine(loan.dueDate, returnDate);
 
-    // Shared inventory layer owns the copy counts (and its own validation)
+    // Shared inventory layer owns the copy counts (and its own validation).
+    // The copy must settle BEFORE the loan is marked returned.
+    let inventoryWarning: string | undefined;
     if (loan.bookId) {
       const inventoryResult = await returnCopy(loan.bookId);
       if (!inventoryResult.success) return { success: false, error: inventoryResult.error };
+    } else {
+      inventoryWarning = "This loan is not linked to an inventory record, so no copy count was changed.";
     }
 
     const { error } = await supabase.from("loans").update({
