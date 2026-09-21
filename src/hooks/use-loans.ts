@@ -58,6 +58,8 @@ function dbToLoan(row: any): ActiveLoan {
     member: row.member_name,
     memberId: row.member_id,
     book: row.book_title,
+    // `book_id` is the durable link to the inventory record. Older rows may
+    // predate the column; their accession id is not an inventory id.
     bookId: row.book_id || "",
     accessionId: row.accession_id,
     issuedDate: row.issued_date,
@@ -115,9 +117,14 @@ export function useLoans() {
   }, [fetchLoans]);
 
   const issueLoan = useCallback(async (input: IssueLoanInput): Promise<{ success: boolean; error?: string; id?: string }> => {
-    // Generate loan ID
-    const count = loans.length;
-    const id = `LN-${String(count + 401).padStart(4, "0")}`;
+    // Generate loan ID from the highest existing number (never from the count,
+    // which collides once any loan is removed or ids are non-contiguous).
+    let maxNum = 400;
+    for (const l of loans) {
+      const m = /^LN-(\d+)$/.exec(l.id);
+      if (m) maxNum = Math.max(maxNum, Number(m[1]));
+    }
+    const id = `LN-${String(maxNum + 1).padStart(4, "0")}`;
     const issuedDate = new Date().toISOString().split("T")[0];
 
     const row = {
@@ -125,6 +132,7 @@ export function useLoans() {
       member_name: input.memberName,
       member_id: input.memberId,
       book_title: input.bookTitle,
+      book_id: input.bookId,
       accession_id: input.accessionId,
       issued_date: issuedDate,
       due_date: input.dueDate,
