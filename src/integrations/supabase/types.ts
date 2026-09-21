@@ -164,6 +164,7 @@ export type Database = {
       loans: {
         Row: {
           accession_id: string
+          book_id: string
           book_title: string
           created_at: string
           due_date: string
@@ -186,6 +187,7 @@ export type Database = {
         }
         Insert: {
           accession_id: string
+          book_id?: string
           book_title: string
           created_at?: string
           due_date: string
@@ -208,6 +210,7 @@ export type Database = {
         }
         Update: {
           accession_id?: string
+          book_id?: string
           book_title?: string
           created_at?: string
           due_date?: string
