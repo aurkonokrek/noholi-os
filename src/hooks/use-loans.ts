@@ -234,7 +234,7 @@ export function useLoans() {
       )
     );
 
-    return { success: true, fine };
+    return { success: true, fine, inventoryWarning };
   }, [loans]);
 
   const extendLoan = useCallback(async (loanId: string, newDueDate: string): Promise<{ success: boolean; error?: string }> => {
@@ -310,15 +310,18 @@ export function useLoans() {
     return { success: true };
   }, [loans]);
 
-  const cancelLoan = useCallback(async (loanId: string): Promise<{ success: boolean; error?: string }> => {
+  const cancelLoan = useCallback(async (loanId: string): Promise<{ success: boolean; error?: string; inventoryWarning?: string }> => {
     const loan = loans.find((l) => l.id === loanId);
     if (!loan) return { success: false, error: "Loan not found" };
     if (loan.status === "Returned" || loan.status === "Cancelled") return { success: false, error: "Cannot cancel this loan" };
 
-    // Shared inventory layer restores availability
+    // Shared inventory layer restores availability before the loan is voided
+    let inventoryWarning: string | undefined;
     if (loan.bookId) {
       const inventoryResult = await returnCopy(loan.bookId);
       if (!inventoryResult.success) return { success: false, error: inventoryResult.error };
+    } else {
+      inventoryWarning = "This loan is not linked to an inventory record, so no copy count was changed.";
     }
 
     const { error } = await supabase.from("loans").update({ status: "Cancelled" }).eq("id", loanId);
