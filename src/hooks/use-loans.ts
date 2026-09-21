@@ -58,6 +58,8 @@ function dbToLoan(row: any): ActiveLoan {
     member: row.member_name,
     memberId: row.member_id,
     book: row.book_title,
+    // `book_id` is the durable link to the inventory record. Older rows may
+    // predate the column; their accession id is not an inventory id.
     bookId: row.book_id || "",
     accessionId: row.accession_id,
     issuedDate: row.issued_date,
@@ -115,9 +117,14 @@ export function useLoans() {
   }, [fetchLoans]);
 
   const issueLoan = useCallback(async (input: IssueLoanInput): Promise<{ success: boolean; error?: string; id?: string }> => {
-    // Generate loan ID
-    const count = loans.length;
-    const id = `LN-${String(count + 401).padStart(4, "0")}`;
+    // Generate loan ID from the highest existing number (never from the count,
+    // which collides once any loan is removed or ids are non-contiguous).
+    let maxNum = 400;
+    for (const l of loans) {
+      const m = /^LN-(\d+)$/.exec(l.id);
+      if (m) maxNum = Math.max(maxNum, Number(m[1]));
+    }
+    const id = `LN-${String(maxNum + 1).padStart(4, "0")}`;
     const issuedDate = new Date().toISOString().split("T")[0];
 
     const row = {
@@ -125,6 +132,7 @@ export function useLoans() {
       member_name: input.memberName,
       member_id: input.memberId,
       book_title: input.bookTitle,
+      book_id: input.bookId,
       accession_id: input.accessionId,
       issued_date: issuedDate,
       due_date: input.dueDate,
@@ -177,9 +185,9 @@ export function useLoans() {
     };
     setLoans((prev) => [newLoan, ...prev]);
     return { success: true, id };
-  }, [loans.length]);
+  }, [loans]);
 
-  const returnLoan = useCallback(async (loanId: string): Promise<{ success: boolean; error?: string; fine?: number }> => {
+  const returnLoan = useCallback(async (loanId: string): Promise<{ success: boolean; error?: string; fine?: number; inventoryWarning?: string }> => {
     const loan = loans.find((l) => l.id === loanId);
     if (!loan) return { success: false, error: "Loan not found" };
     if (loan.status === "Returned") return { success: false, error: "This loan has already been returned" };
@@ -188,10 +196,14 @@ export function useLoans() {
     const returnDate = new Date().toISOString().split("T")[0];
     const fine = computeFine(loan.dueDate, returnDate);
 
-    // Shared inventory layer owns the copy counts (and its own validation)
+    // Shared inventory layer owns the copy counts (and its own validation).
+    // The copy must settle BEFORE the loan is marked returned.
+    let inventoryWarning: string | undefined;
     if (loan.bookId) {
       const inventoryResult = await returnCopy(loan.bookId);
       if (!inventoryResult.success) return { success: false, error: inventoryResult.error };
+    } else {
+      inventoryWarning = "This loan is not linked to an inventory record, so no copy count was changed.";
     }
 
     const { error } = await supabase.from("loans").update({
@@ -222,7 +234,7 @@ export function useLoans() {
       )
     );
 
-    return { success: true, fine };
+    return { success: true, fine, inventoryWarning };
   }, [loans]);
 
   const extendLoan = useCallback(async (loanId: string, newDueDate: string): Promise<{ success: boolean; error?: string }> => {
@@ -298,15 +310,18 @@ export function useLoans() {
     return { success: true };
   }, [loans]);
 
-  const cancelLoan = useCallback(async (loanId: string): Promise<{ success: boolean; error?: string }> => {
+  const cancelLoan = useCallback(async (loanId: string): Promise<{ success: boolean; error?: string; inventoryWarning?: string }> => {
     const loan = loans.find((l) => l.id === loanId);
     if (!loan) return { success: false, error: "Loan not found" };
     if (loan.status === "Returned" || loan.status === "Cancelled") return { success: false, error: "Cannot cancel this loan" };
 
-    // Shared inventory layer restores availability
+    // Shared inventory layer restores availability before the loan is voided
+    let inventoryWarning: string | undefined;
     if (loan.bookId) {
       const inventoryResult = await returnCopy(loan.bookId);
       if (!inventoryResult.success) return { success: false, error: inventoryResult.error };
+    } else {
+      inventoryWarning = "This loan is not linked to an inventory record, so no copy count was changed.";
     }
 
     const { error } = await supabase.from("loans").update({ status: "Cancelled" }).eq("id", loanId);
@@ -327,7 +342,7 @@ export function useLoans() {
     setLoans((prev) =>
       prev.map((l) => l.id === loanId ? { ...l, status: "Cancelled" as const } : l)
     );
-    return { success: true };
+    return { success: true, inventoryWarning };
   }, [loans]);
 
   return { loans, loading, issueLoan, returnLoan, extendLoan, updateLoan, cancelLoan, refetch: fetchLoans };

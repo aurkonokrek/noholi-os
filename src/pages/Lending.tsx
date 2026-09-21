@@ -55,7 +55,8 @@ export default function Lending() {
     if (result.success) {
       toast({
         title: "Book returned",
-        description: `${returnTarget.book} returned by ${returnTarget.member}${result.fine ? ` — Fine: ৳${result.fine}` : ""}`,
+        description: `${returnTarget.book} returned by ${returnTarget.member}${result.fine ? ` — Fine: ৳${result.fine}` : ""}${result.inventoryWarning ? ` — ${result.inventoryWarning}` : ""}`,
+        variant: result.inventoryWarning ? "destructive" : undefined,
       });
     } else {
       toast({ title: "Error", description: result.error, variant: "destructive" });
@@ -67,7 +68,11 @@ export default function Lending() {
     if (!cancelTarget) return;
     const result = await cancelLoan(cancelTarget.id);
     if (result.success) {
-      toast({ title: "Loan cancelled", description: `Loan ${cancelTarget.id} has been cancelled.` });
+      toast({
+        title: "Loan cancelled",
+        description: `Loan ${cancelTarget.id} has been cancelled.${result.inventoryWarning ? ` ${result.inventoryWarning}` : ""}`,
+        variant: result.inventoryWarning ? "destructive" : undefined,
+      });
     } else {
       toast({ title: "Error", description: result.error, variant: "destructive" });
     }
