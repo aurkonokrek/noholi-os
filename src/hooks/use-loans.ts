@@ -342,7 +342,7 @@ export function useLoans() {
     setLoans((prev) =>
       prev.map((l) => l.id === loanId ? { ...l, status: "Cancelled" as const } : l)
     );
-    return { success: true };
+    return { success: true, inventoryWarning };
   }, [loans]);
 
   return { loans, loading, issueLoan, returnLoan, extendLoan, updateLoan, cancelLoan, refetch: fetchLoans };
