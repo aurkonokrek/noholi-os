@@ -16,19 +16,6 @@ export interface Member {
   postalCode: string;
 }
 
-const SEED_MEMBERS: Member[] = [
-  { memberId: "MEM-1001", name: "Alice Mwangi", email: "alice@email.com", phone: "+254712345678", activeLoans: 2, fines: 0, status: "Active", addressLine: "", city: "Uttara", district: "Dhaka", postalCode: "" },
-  { memberId: "MEM-1002", name: "James Oloo", email: "james@email.com", phone: "+254723456789", activeLoans: 0, fines: 150, status: "Active", addressLine: "", city: "Dhanmondi", district: "Dhaka", postalCode: "" },
-  { memberId: "MEM-1003", name: "John Otieno", email: "john@email.com", phone: "+254734567890", activeLoans: 0, fines: 500, status: "Suspended", addressLine: "", city: "Kaliganj", district: "Gazipur", postalCode: "" },
-  { memberId: "MEM-1004", name: "Sarah Njoki", email: "sarah@email.com", phone: "+254745678901", activeLoans: 1, fines: 0, status: "Active", addressLine: "", city: "Mirpur", district: "Dhaka", postalCode: "" },
-  { memberId: "MEM-1005", name: "Peter Kamau", email: "peter@email.com", phone: "+254756789012", activeLoans: 1, fines: 75, status: "Active", addressLine: "", city: "Gulshan", district: "Dhaka", postalCode: "" },
-  { memberId: "MEM-1006", name: "Grace Wambui", email: "grace@email.com", phone: "+254767890123", activeLoans: 1, fines: 0, status: "Active", addressLine: "", city: "", district: "", postalCode: "" },
-  { memberId: "MEM-1007", name: "Daniel Kipchoge", email: "daniel@email.com", phone: "+254778901234", activeLoans: 1, fines: 200, status: "Active", addressLine: "", city: "", district: "", postalCode: "" },
-  { memberId: "MEM-1008", name: "Faith Achieng", email: "faith@email.com", phone: "+254789012345", activeLoans: 1, fines: 0, status: "Active", addressLine: "", city: "", district: "", postalCode: "" },
-  { memberId: "MEM-1009", name: "Moses Wekesa", email: "moses@email.com", phone: "+254790123456", activeLoans: 0, fines: 0, status: "Expired", addressLine: "", city: "", district: "", postalCode: "" },
-  { memberId: "MEM-1010", name: "Lydia Chebet", email: "lydia@email.com", phone: "+254701234567", activeLoans: 0, fines: 350, status: "Suspended", addressLine: "", city: "", district: "", postalCode: "" },
-];
-
 function dbToMember(row: any): Member {
   return {
     memberId: row.id,
@@ -55,17 +42,7 @@ export function useMembers() {
       try {
         const { data, error } = await supabase.from("members").select("*").order("id");
         if (error) throw error;
-        if (data && data.length > 0) {
-          setMembers(data.map(dbToMember));
-        } else {
-          const rows = SEED_MEMBERS.map((m) => ({
-            id: m.memberId, name: m.name, email: m.email, phone: m.phone,
-            active_loans: m.activeLoans, fines: m.fines, status: m.status,
-            address_line: m.addressLine, city: m.city, district: m.district, postal_code: m.postalCode,
-          }));
-          await supabase.from("members").insert(rows);
-          setMembers(SEED_MEMBERS);
-        }
+        setMembers((data ?? []).map(dbToMember));
       } catch (err) {
         console.error("Failed to load members:", err);
       } finally {
