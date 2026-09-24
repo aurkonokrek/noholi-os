@@ -13,15 +13,6 @@ export interface Donation {
   assignedAccessionId?: string;
 }
 
-const SEED_DONATIONS: Donation[] = [
-  { id: "DON-001", donorName: "Nairobi Book Club", bookTitle: "Sapiens", condition: "Good", dateReceived: "2026-02-12", reviewStatus: "Pending" },
-  { id: "DON-002", donorName: "Mary Wanjiku", bookTitle: "Educated", condition: "New", dateReceived: "2026-02-10", reviewStatus: "Pending" },
-  { id: "DON-003", donorName: "KCB Foundation", bookTitle: "The Art of War", condition: "Fair", dateReceived: "2026-02-08", reviewStatus: "Approved", assignedAccessionId: "ACC-0015" },
-  { id: "DON-004", donorName: "Anonymous", bookTitle: "To Kill a Mockingbird", condition: "Good", dateReceived: "2026-02-05", reviewStatus: "Added to Inventory", assignedAccessionId: "ACC-0016" },
-  { id: "DON-005", donorName: "Safaricom PLC", bookTitle: "Zero to One", condition: "New", dateReceived: "2026-02-03", reviewStatus: "Approved", assignedAccessionId: "ACC-0017" },
-  { id: "DON-006", donorName: "James Oloo", bookTitle: "Things Fall Apart", condition: "Poor", dateReceived: "2026-01-28", reviewStatus: "Rejected" },
-];
-
 function dbToDonation(row: any): Donation {
   return {
     id: row.id,
@@ -43,17 +34,7 @@ export function useDonations() {
       try {
         const { data, error } = await supabase.from("donations").select("*").order("created_at", { ascending: false });
         if (error) throw error;
-        if (data && data.length > 0) {
-          setDonations(data.map(dbToDonation));
-        } else {
-          const rows = SEED_DONATIONS.map((d) => ({
-            id: d.id, donor_name: d.donorName, book_title: d.bookTitle,
-            condition: d.condition, date_received: d.dateReceived,
-            review_status: d.reviewStatus, assigned_accession_id: d.assignedAccessionId ?? null,
-          }));
-          await supabase.from("donations").insert(rows);
-          setDonations(SEED_DONATIONS);
-        }
+        setDonations((data ?? []).map(dbToDonation));
       } catch (err) {
         console.error("Failed to load donations:", err);
       } finally {
