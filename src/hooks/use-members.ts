@@ -14,7 +14,13 @@ export interface Member {
   city: string;
   district: string;
   postalCode: string;
+  meritGrade: MeritGrade;
+  meritNote: string;
+  joinDate: string;
 }
+
+export const MERIT_GRADES = ["A", "B", "C", "D", "E", "Not Assigned"] as const;
+export type MeritGrade = typeof MERIT_GRADES[number];
 
 function dbToMember(row: any): Member {
   return {
@@ -23,13 +29,16 @@ function dbToMember(row: any): Member {
     email: row.email,
     phone: row.phone ?? "",
     activeLoans: row.active_loans ?? 0,
-    fines: Number(row.fines) ?? 0,
+    fines: Number(row.fines) || 0,
     status: row.status as Member["status"],
     avatar: row.avatar ?? undefined,
     addressLine: row.address_line ?? "",
     city: row.city ?? "",
     district: row.district ?? "",
     postalCode: row.postal_code ?? "",
+    meritGrade: (MERIT_GRADES as readonly string[]).includes(row.merit_grade) ? row.merit_grade : "Not Assigned",
+    meritNote: row.merit_note ?? "",
+    joinDate: row.created_at ?? "",
   };
 }
 
