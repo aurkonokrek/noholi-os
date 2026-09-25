@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Eye, Archive, User, UserX, UserCheck, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, History, Archive, User, UserX, UserCheck, Loader2 } from "lucide-react";
 import { AddMemberDialog } from "@/components/AddMemberDialog";
 import { EditMemberDialog } from "@/components/EditMemberDialog";
+import { MemberViewDrawer } from "@/components/MemberViewDrawer";
+import { formatTaka } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
 import { SearchBar } from "@/components/SearchBar";
@@ -13,7 +15,7 @@ import { ContactInfo } from "@/components/ContactInfo";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useCanWrite, useCanDelete } from "@/lib/roles";
 import { useToast } from "@/hooks/use-toast";
-import { useMembers, type Member } from "@/hooks/use-members";
+import { useMembers, MERIT_GRADES, type Member } from "@/hooks/use-members";
 
 const STATUS_VARIANT: Record<Member["status"], BadgeVariant> = {
   Active: "success",
@@ -22,6 +24,7 @@ const STATUS_VARIANT: Record<Member["status"], BadgeVariant> = {
 };
 
 const STATUS_OPTIONS = ["All", "Active", "Suspended", "Expired"] as const;
+const MERIT_OPTIONS = ["All Merit", ...MERIT_GRADES] as string[];
 
 export default function MembersPage() {
   const canWrite = useCanWrite();
@@ -30,6 +33,9 @@ export default function MembersPage() {
   const { members, loading, addMember, updateStatus, updateMember, deleteMember, archiveMember } = useMembers();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [meritFilter, setMeritFilter] = useState<string>("All Merit");
+  const [viewMemberId, setViewMemberId] = useState<string | null>(null);
+  const [viewTab, setViewTab] = useState<"profile" | "history">("profile");
   const [showAddMember, setShowAddMember] = useState(false);
   const [editMember, setEditMember] = useState<Member | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
@@ -38,7 +44,9 @@ export default function MembersPage() {
     action: "suspend" | "reactivate" | "delete" | "archive";
   } | null>(null);
 
-  const hasFilters = search || statusFilter !== "All";
+  const hasFilters = search || statusFilter !== "All" || meritFilter !== "All Merit";
+  const viewMember = members.find((m) => m.memberId === viewMemberId) ?? null;
+  const openView = (m: Member, tab: "profile" | "history") => { setViewTab(tab); setViewMemberId(m.memberId); };
 
   const handleConfirm = async () => {
     if (!confirmAction) return;
@@ -67,7 +75,8 @@ export default function MembersPage() {
       m.memberId.toLowerCase().includes(search.toLowerCase()) ||
       m.email.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "All" || m.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesMerit = meritFilter === "All Merit" || m.meritGrade === meritFilter;
+    return matchesSearch && matchesStatus && matchesMerit;
   });
 
   const columns: Column<Member>[] = [
@@ -101,7 +110,12 @@ export default function MembersPage() {
       },
     },
     { key: "activeLoans", label: "Loans", render: (m) => m.activeLoans },
-    { key: "fines", label: "Fines (KES)", render: (m) => (m.fines > 0 ? m.fines.toLocaleString() : "—") },
+    { key: "fines", label: "Fines (৳)", render: (m) => (m.fines > 0 ? formatTaka(m.fines) : "—") },
+    {
+      key: "merit",
+      label: "Merit",
+      render: (m) => <StatusBadge variant={m.meritGrade === "Not Assigned" ? "muted" : "default"}>{m.meritGrade}</StatusBadge>,
+    },
     {
       key: "status",
       label: "Status",
@@ -121,7 +135,8 @@ export default function MembersPage() {
             render: (m: Member) => (
               <RowActions
                 primary={[
-                  { label: "View", icon: Eye, onClick: () => {} },
+                  { label: "View", icon: Eye, onClick: () => openView(m, "profile") },
+                  { label: "History", icon: History, onClick: () => openView(m, "history") },
                   { label: "Edit", icon: Pencil, onClick: () => setEditMember(m) },
                 ]}
                 secondary={[
@@ -193,9 +208,10 @@ export default function MembersPage() {
           value={statusFilter as typeof STATUS_OPTIONS[number]}
           onChange={setStatusFilter}
         />
+        <FilterChips options={MERIT_OPTIONS} value={meritFilter} onChange={setMeritFilter} />
         {hasFilters && (
           <button
-            onClick={() => { setSearch(""); setStatusFilter("All"); }}
+            onClick={() => { setSearch(""); setStatusFilter("All"); setMeritFilter("All Merit"); }}
             className="text-[12px] text-muted-foreground hover:text-foreground underline"
           >
             Reset
@@ -246,6 +262,14 @@ export default function MembersPage() {
           const id = await addMember(member);
           toast({ title: "Member added", description: `${member.name} (${id})` });
         }}
+      />
+
+      <MemberViewDrawer
+        member={viewMember}
+        tab={viewTab}
+        onTabChange={setViewTab}
+        onClose={() => setViewMemberId(null)}
+        onEdit={(m) => setEditMember(m)}
       />
 
       <EditMemberDialog
