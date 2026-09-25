@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Member } from "@/hooks/use-members";
+import { MERIT_GRADES, type Member, type MeritGrade } from "@/hooks/use-members";
+import { Textarea } from "@/components/ui/textarea";
 
 interface EditMemberDialogProps {
   open: boolean;
@@ -17,6 +18,8 @@ interface EditMemberDialogProps {
     city: string;
     district: string;
     postalCode: string;
+    meritGrade: MeritGrade;
+    meritNote: string;
   }) => void;
   member: Member | null;
 }
@@ -31,6 +34,8 @@ export function EditMemberDialog({ open, onClose, onSave, member }: EditMemberDi
     city: "",
     district: "",
     postalCode: "",
+    meritGrade: "Not Assigned" as MeritGrade,
+    meritNote: "",
   });
 
   useEffect(() => {
@@ -44,6 +49,8 @@ export function EditMemberDialog({ open, onClose, onSave, member }: EditMemberDi
         city: member.city ?? "",
         district: member.district ?? "",
         postalCode: member.postalCode ?? "",
+        meritGrade: member.meritGrade ?? "Not Assigned",
+        meritNote: member.meritNote ?? "",
       });
     }
   }, [member]);
@@ -91,6 +98,24 @@ export function EditMemberDialog({ open, onClose, onSave, member }: EditMemberDi
                 <SelectItem value="Expired">Expired</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[12px] font-medium text-muted-foreground">Merit Grade</label>
+            <Select value={form.meritGrade} onValueChange={(v) => set("meritGrade", v)}>
+              <SelectTrigger className="h-8 text-[13px]" aria-label="Merit Grade">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MERIT_GRADES.map((g) => (
+                  <SelectItem key={g} value={g}>{g}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[12px] font-medium text-muted-foreground">Merit Note (optional)</label>
+            <Textarea aria-label="Merit Note" value={form.meritNote} onChange={(e) => set("meritNote", e.target.value)} className="text-[13px] min-h-[60px]" />
           </div>
 
           <div className="pt-1">

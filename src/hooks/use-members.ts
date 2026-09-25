@@ -14,7 +14,13 @@ export interface Member {
   city: string;
   district: string;
   postalCode: string;
+  meritGrade: MeritGrade;
+  meritNote: string;
+  joinDate: string;
 }
+
+export const MERIT_GRADES = ["A", "B", "C", "D", "E", "Not Assigned"] as const;
+export type MeritGrade = typeof MERIT_GRADES[number];
 
 function dbToMember(row: any): Member {
   return {
@@ -23,13 +29,16 @@ function dbToMember(row: any): Member {
     email: row.email,
     phone: row.phone ?? "",
     activeLoans: row.active_loans ?? 0,
-    fines: Number(row.fines) ?? 0,
+    fines: Number(row.fines) || 0,
     status: row.status as Member["status"],
     avatar: row.avatar ?? undefined,
     addressLine: row.address_line ?? "",
     city: row.city ?? "",
     district: row.district ?? "",
     postalCode: row.postal_code ?? "",
+    meritGrade: (MERIT_GRADES as readonly string[]).includes(row.merit_grade) ? row.merit_grade : "Not Assigned",
+    meritNote: row.merit_note ?? "",
+    joinDate: row.created_at ?? "",
   };
 }
 
@@ -53,7 +62,7 @@ export function useMembers() {
 
   const addMember = useCallback(async (member: { name: string; email: string; phone: string }) => {
     const id = `MEM-${String(members.length + 1001).padStart(4, "0")}`;
-    const newMember: Member = { memberId: id, ...member, activeLoans: 0, fines: 0, status: "Active", addressLine: "", city: "", district: "", postalCode: "" };
+    const newMember: Member = { memberId: id, ...member, activeLoans: 0, fines: 0, status: "Active", addressLine: "", city: "", district: "", postalCode: "", meritGrade: "Not Assigned", meritNote: "", joinDate: new Date().toISOString() };
     setMembers((prev) => [newMember, ...prev]);
     await supabase.from("members").insert({
       id, name: member.name, email: member.email, phone: member.phone,
@@ -67,7 +76,7 @@ export function useMembers() {
     await supabase.from("members").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", memberId);
   }, []);
 
-  const updateMember = useCallback(async (memberId: string, updates: Partial<Pick<Member, "name" | "email" | "phone" | "status" | "addressLine" | "city" | "district" | "postalCode">>) => {
+  const updateMember = useCallback(async (memberId: string, updates: Partial<Pick<Member, "name" | "email" | "phone" | "status" | "addressLine" | "city" | "district" | "postalCode" | "meritGrade" | "meritNote">>) => {
     setMembers((prev) => prev.map((m) => m.memberId === memberId ? { ...m, ...updates } : m));
     const dbUpdates: any = { updated_at: new Date().toISOString() };
     if (updates.name !== undefined) dbUpdates.name = updates.name;
@@ -78,6 +87,8 @@ export function useMembers() {
     if (updates.city !== undefined) dbUpdates.city = updates.city;
     if (updates.district !== undefined) dbUpdates.district = updates.district;
     if (updates.postalCode !== undefined) dbUpdates.postal_code = updates.postalCode;
+    if (updates.meritGrade !== undefined) dbUpdates.merit_grade = updates.meritGrade;
+    if (updates.meritNote !== undefined) dbUpdates.merit_note = updates.meritNote;
     await supabase.from("members").update(dbUpdates).eq("id", memberId);
   }, []);
 
