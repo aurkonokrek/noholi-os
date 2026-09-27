@@ -209,6 +209,49 @@ export default function DonationsPage() {
         emptyMessage="No donations match your filters."
         compact
       />
+
+      <DonationViewDrawer donation={viewing} onOpenChange={(o) => !o && setViewing(null)} />
+      <EditDonationDialog
+        donation={editing}
+        onOpenChange={(o) => !o && setEditing(null)}
+        onSave={async (v) => {
+          try { await updateDonation(editing!.id, v); toast({ title: "Donation updated", description: editing!.id }); setEditing(null); }
+          catch (e) { fail("Could not update donation", e); }
+        }}
+      />
+      <RejectDonationDialog
+        donation={rejecting}
+        onOpenChange={(o) => !o && setRejecting(null)}
+        onReject={async (reason) => {
+          try { await reject(rejecting!.id, reason); toast({ title: "Donation rejected", description: rejecting!.id }); setRejecting(null); }
+          catch (e) { fail("Could not reject donation", e); }
+        }}
+      />
+      <AddToInventoryDialog
+        donation={adding}
+        onOpenChange={(o) => !o && setAdding(null)}
+        onConfirm={async () => {
+          try {
+            const bookId = await addToInventory(adding!.id);
+            toast({ title: "Added to Inventory", description: `${adding!.id} is now Inventory book ${bookId}` });
+            setAdding(null);
+          } catch (e) { fail("Could not add to Inventory", e); setAdding(null); }
+        }}
+      />
+      <ConfirmDialog
+        open={!!deleting}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        title="Delete donation?"
+        description={`${deleting?.id ?? ""} will be permanently removed.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={async () => {
+          const d = deleting; setDeleting(null);
+          if (!d) return;
+          try { await deleteDonation(d.id); toast({ title: "Donation deleted", description: d.id }); }
+          catch (e) { fail("Could not delete donation", e); }
+        }}
+      />
     </div>
   );
 }
