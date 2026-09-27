@@ -295,7 +295,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_donation_to_inventory: {
+        Args: { _donation_id: string }
+        Returns: string
+      }
+      next_donation_id: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
