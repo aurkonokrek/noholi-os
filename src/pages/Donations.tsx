@@ -174,45 +174,11 @@ export default function DonationsPage() {
       {showForm && (
         <div className="bg-card border border-border rounded p-3">
           <h2 className="text-[13px] font-semibold text-foreground mb-2">Record Donation</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <div className="space-y-1">
-              <label className="text-[12px] font-medium text-muted-foreground">Donor Name</label>
-              <Input placeholder="Enter donor name" className="h-8 text-[13px]" value={donorName} onChange={(e) => setDonorName(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[12px] font-medium text-muted-foreground">Book Title</label>
-              <Input placeholder="Enter book title" className="h-8 text-[13px]" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[12px] font-medium text-muted-foreground">Condition</label>
-              <select
-                className="w-full h-8 rounded border border-input bg-background px-2.5 text-[13px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                value={condition}
-                onChange={(e) => setCondition(e.target.value as Donation["condition"])}
-              >
-                <option>New</option>
-                <option>Good</option>
-                <option>Fair</option>
-                <option>Poor</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <Button
-                size="sm"
-                className="h-8 text-[13px]"
-                disabled={!donorName.trim() || !bookTitle.trim()}
-                onClick={async () => {
-                  await addDonation({ donorName: donorName.trim(), bookTitle: bookTitle.trim(), condition });
-                  toast({ title: "Donation recorded", description: `${bookTitle} from ${donorName}` });
-                  setDonorName("");
-                  setBookTitle("");
-                  setCondition("New");
-                  setShowForm(false);
-                }}
-              >
-                Save Donation
-              </Button>
-            </div>
+          <DonationFields value={form} onChange={setForm} />
+          <div className="flex justify-end mt-2">
+            <Button size="sm" className="h-8 text-[13px]" disabled={!isDonationInputValid(form) || saving} onClick={handleSave}>
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}Save Donation
+            </Button>
           </div>
         </div>
       )}
