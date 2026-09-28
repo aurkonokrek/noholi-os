@@ -1,73 +1,117 @@
-# Welcome to your Lovable project
+# Remix of Remix of Noholi Library Hub
 
-## Project info
+PROMPT:
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Design a professional web-based Library Admin Dashboard UI for a system named “Noholi”.
 
-## How can I edit this code?
+This is a real internal operational system for daily staff use.
+It is NOT a marketing website and NOT a reader browsing platform.
 
-There are several ways of editing your application.
+The interface must prioritize:
 
-**Use Lovable**
+Speed
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+Clarity
 
-Changes made via Lovable will be committed automatically to this repo.
+Low cognitive load
 
-**Use your preferred IDE**
+Data density
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Functional usability over aesthetics
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+No promotional banners.
+No decorative illustrations.
+No emotional storytelling elements.
 
-Follow these steps:
+🧱 Core Layout
+
+Create:
+
+Left vertical sidebar navigation (text-first, minimal icons)
+
+Top bar with global search
+
+Main content area using responsive grid layout
+
+Clean spacing system
+
+Neutral professional color palette
+
+Subtle shadows
+
+Minimal rounded corners
+
+👥 Role-Based System
+
+There are 3 roles:
+
+Admin – full access
+Staff – operational access only
+Manager – analytics-focused, read-only
+
+Design the layout so sidebar items and actions can be conditionally hidden based on role.
+
+Do NOT create separate UIs.
+Create one scalable layout.
+
+📂 Sidebar Navigation
+
+Include:
+
+Dashboard
+Inventory
+Lending
+Members
+Donations
+Fines
+Reports
+Settings
+
+Structure must support scalability.
+
+📊 Dashboard (Default View)
+
+Top Summary Cards:
+
+Total Books
+
+Books on Loan
+
+Overdue Today
+
+Active Members
+
+Donations This Month
+
+Below:
+
+Recent Activity table:
+
+Book
+Member
+Action (Issued / Returned / Donated)
+Date
+Status
+
+Use structured tables — not card grids.
+
+This project was built with [Lovable](https://lovable.dev).
+
+## Build with Lovable
+
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/824f2a6c-7c88-4cae-bd08-f8b9fb643424).
+
+- **Ship faster**: describe what you want to build and Lovable handles the code.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+
+## Development
+
+Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
+git clone <this-repository-url>
+cd <repository-name>
 npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
